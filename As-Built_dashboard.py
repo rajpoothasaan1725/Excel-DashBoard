@@ -31,7 +31,7 @@ if "role" not in st.session_state:
 # =========================================================
 
 # Login background image
-login_bg_path = r"D:\As-Built\Dashboard\login_bg.png"
+image_path = "login_bg.png"
 
 # Excel file
 excel_file_path = r"D:\As-Built\Dashboard\North As-Built Tracker.xlsx"
