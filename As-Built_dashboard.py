@@ -27,17 +27,17 @@ if "role" not in st.session_state:
 
 
 # =========================================================
-# 3. FILE PATHS
+# 3. FILE PATHS (Relative Paths for Cloud Deployment)
 # =========================================================
 
 # Login background image
-image_path = "login_bg.png"
+login_bg_path = "login_bg.png"
 
 # Excel file
-excel_file_path = r"D:\As-Built\Dashboard\North As-Built Tracker.xlsx"
+excel_file_path = "North As-Built Tracker.xlsx"
 
 # Transworld logo
-logo_path = r"D:\As-Built\Dashboard\transworld_logo.png"
+logo_path = "transworld_logo.png"
 
 
 # =========================================================
