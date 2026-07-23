@@ -1,597 +1,203 @@
 import base64
-from datetime import datetime
 import os
-
+import openpyxl
+from openpyxl.styles import Alignment, Font, PatternFill
 import pandas as pd
 import streamlit as st
 
-# =========================================================
-# 1. PAGE CONFIGURATION
-# =========================================================
+# Set page layout to wide
+st.set_page_config(page_title="As-Built Tracker North", layout="wide")
 
-st.set_page_config(page_title="Transworld Home Dashboard", layout="wide")
-
-
-# =========================================================
-# 2. SESSION STATE
-# =========================================================
-
-if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-
-if "username" not in st.session_state:
-    st.session_state.username = ""
-
-if "role" not in st.session_state:
-    st.session_state.role = ""
-
-
-# =========================================================
-# 3. FILE PATHS (Relative Paths for Cloud Deployment)
-# =========================================================
-
-# Login background image
+# Paths for files (relative for Streamlit Cloud deployment)
+excel_file_path = "North As-Built Tracker.xlsx"
 login_bg_path = "login_bg.png"
 
-# Excel file
-excel_file_path = "North As-Built Tracker.xlsx"
 
-# Transworld logo
-logo_path = "transworld_logo.png"
-
-
-# =========================================================
-# 4. LOGIN PAGE
-# =========================================================
-
-if not st.session_state.logged_in:
-
-    # =====================================================
-    # LOAD LOGIN BACKGROUND
-    # =====================================================
-
-    if os.path.exists(login_bg_path):
-
-        with open(login_bg_path, "rb") as image_file:
-            encoded_image = base64.b64encode(image_file.read()).decode("utf-8")
-
-        # =================================================
-        # LOGIN PAGE CSS
-        # =================================================
-
+# --- FUNCTION TO SET BACKGROUND IMAGE FOR LOGIN ---
+def set_bg_image(image_file):
+    if os.path.exists(image_file):
+        with open(image_file, "rb") as f:
+            encoded_string = base64.b64encode(f.read()).decode()
         st.markdown(
             f"""
             <style>
-
-            /* Full Screen Background Image */
             .stApp {{
-                background-image: url("data:image/png;base64,{encoded_image}");
+                background-image: url("data:image/png;base64,{encoded_string}");
                 background-size: cover;
                 background-position: center;
                 background-repeat: no-repeat;
                 background-attachment: fixed;
             }}
-
-            /* Remove Streamlit Header & Adjust Top Padding */
-            header, div[data-testid="stHeader"] {{
-                display: none !important;
-            }}
-
-            .block-container {{
-                padding-top: 5rem !important;
-            }}
-
-            /* TARGET STREAMLIT FORM AS THE OUTER DARK TRANSPARENT CARD */
-            div[data-testid="stForm"] {{
-                background: rgba(0, 0, 0, 0.65) !important; /* Semi-transparent dark overlay */
-                border: 2px solid rgba(255, 255, 255, 0.3) !important;
-                border-radius: 16px !important;
-                padding: 30px 25px !important;
-                box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.7) !important;
-                backdrop-filter: blur(8px) !important;
-            }}
-
-            /* Header Titles */
-            .main-title {{
-                color: #FFFFFF !important;
-                font-size: 32px !important;
-                font-weight: 700 !important;
-                text-align: center !important;
-                margin-bottom: 2px !important;
-                font-family: sans-serif;
-            }}
-
-            .sub-title {{
-                color: #E2E8F0 !important;
-                font-size: 20px !important;
-                font-weight: 500 !important;
-                text-align: center !important;
-                margin-bottom: 25px !important;
-                font-family: sans-serif;
-            }}
-
-            /* Input Fields - Solid White Rectangles */
-            div[data-testid="stTextInput"] input {{
-                background-color: #FFFFFF !important;
-                color: #000000 !important;
-                border: none !important;
-                border-radius: 4px !important;
-                height: 42px !important;
-                font-size: 16px !important;
-            }}
-
-            /* Bright Blue Button */
-            div[data-testid="stFormSubmitButton"] > button {{
-                background-color: #007bff !important;
-                color: #FFFFFF !important;
-                border: none !important;
-                border-radius: 6px !important;
-                height: 44px !important;
-                font-size: 18px !important;
-                font-weight: 600 !important;
-                margin-top: 10px !important;
-                box-shadow: 0px 4px 12px rgba(0, 123, 255, 0.4) !important;
-            }}
-
-            div[data-testid="stFormSubmitButton"] > button:hover {{
-                background-color: #0056b3 !important;
-                color: #FFFFFF !important;
-            }}
-
             </style>
             """,
             unsafe_allow_html=True,
         )
 
-    else:
-        st.error(f"Login background image not found: {login_bg_path}")
 
-    # =====================================================
-    # LOGIN FORM LAYOUT
-    # =====================================================
+# --- CUSTOM CSS STYLING ---
+st.markdown(
+    """
+    <style>
+    /* Hide 'Press Enter to submit form' hint text in login inputs */
+    div[data-testid="InputInstructions"] {
+        display: none !important;
+    }
+    
+    /* Table Header Custom Styling */
+    th {
+        background-color: #234263 !important;
+        color: white !important;
+        font-weight: bold !important;
+        text-align: center !important;
+    }
+    
+    /* Form Subtitle Text Styling */
+    .login-subtitle {
+        color: #d1d5db !important;
+        text-align: center;
+        font-size: 1.1rem;
+        margin-bottom: 1.5rem;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
-    col_left, col_center, col_right = st.columns([1, 1.3, 1])
+# Authentication credentials
+USERS = {"admin": "transworld123", "viewer": "transworldview"}
 
-    with col_center:
-        # Native Streamlit Form encapsulates all elements inside a single div
-        with st.form(key="login_form", clear_on_submit=False):
+# Initialize session state for login
+if "logged_in" not in st.session_state:
+    st.session_state["logged_in"] = False
+    st.session_state["username"] = ""
 
-            # Titles
+
+# --- EXCEL SAVE FUNCTION WITH BLUE HEADER STYLING ---
+def save_sheet_data(df_to_save, target_name):
+    if not os.path.exists(excel_file_path):
+        st.error("Excel file not found!")
+        return
+
+    xls = pd.ExcelFile(excel_file_path)
+    actual_name = target_name
+
+    for name in xls.sheet_names:
+        if name.strip().lower() == target_name.lower():
+            actual_name = name
+            break
+
+    with pd.ExcelWriter(
+        excel_file_path, engine="openpyxl", mode="a", if_sheet_exists="replace"
+    ) as writer:
+        df_to_save.to_excel(writer, sheet_name=actual_name, index=False)
+
+        # Apply Blue Header Formatting to Excel
+        workbook = writer.book
+        worksheet = workbook[actual_name]
+
+        header_fill = PatternFill(
+            start_color="4682B4", end_color="4682B4", fill_type="solid"
+        )
+        header_font = Font(color="FFFFFF", bold=True)
+
+        for cell in worksheet[1]:
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+
+
+# --- LOGIN PAGE ---
+if not st.session_state["logged_in"]:
+    set_bg_image(login_bg_path)
+
+    col1, col2, col3 = st.columns([1, 1.2, 1])
+
+    with col2:
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        with st.form("login_form"):
             st.markdown(
-                "<div class='main-title'>Transworld Home</div>",
+                "<h1 style='text-align: center; color: white;'>As-Built Tracker North</h1>",
                 unsafe_allow_html=True,
             )
             st.markdown(
-                "<div class='sub-title'>Portal Login</div>",
+                "<p class='login-subtitle'>Portal Login</p>",
                 unsafe_allow_html=True,
             )
 
-            # Username Row (Label Left, Input Right)
-            u_label, u_input = st.columns([1, 2])
-            with u_label:
-                st.markdown(
-                    "<p style='color: white; font-size: 19px; font-weight: 500;"
-                    " margin-top: 8px;'>Username</p>",
-                    unsafe_allow_html=True,
-                )
-            with u_input:
-                username_input = st.text_input(
-                    "Username",
-                    label_visibility="collapsed",
-                    key="login_username",
-                )
+            username_input = st.text_input("Username")
+            password_input = st.text_input("Password", type="password")
 
-            # Password Row (Label Left, Input Right)
-            p_label, p_input = st.columns([1, 2])
-            with p_label:
-                st.markdown(
-                    "<p style='color: white; font-size: 19px; font-weight: 500;"
-                    " margin-top: 8px;'>Password</p>",
-                    unsafe_allow_html=True,
-                )
-            with p_input:
-                password_input = st.text_input(
-                    "Password",
-                    type="password",
-                    label_visibility="collapsed",
-                    key="login_password",
-                )
+            submit = st.form_submit_button("Login", use_container_width=True)
 
-            # Centered Blue Login Button
-            b_left, b_center, b_right = st.columns([0.8, 1.4, 0.8])
-            with b_center:
-                submitted = st.form_submit_button(
-                    "Login", use_container_width=True
-                )
-
-            if submitted:
+            if submit:
                 if (
-                    username_input == "admin"
-                    and password_input == "transworld123"
+                    username_input in USERS
+                    and USERS[username_input] == password_input
                 ):
-                    st.session_state.logged_in = True
-                    st.session_state.username = "admin"
-                    st.session_state.role = "admin"
+                    st.session_state["logged_in"] = True
+                    st.session_state["username"] = username_input
                     st.rerun()
-
-                elif (
-                    username_input == "viewer"
-                    and password_input == "transworldview"
-                ):
-                    st.session_state.logged_in = True
-                    st.session_state.username = "viewer"
-                    st.session_state.role = "viewer"
-                    st.rerun()
-
                 else:
-                    st.error("❌ Invalid Username or Password")
+                    st.error("Invalid Username or Password")
 
-
-# =========================================================
-# 5. DASHBOARD
-# =========================================================
-
+# --- MAIN DASHBOARD PAGE ---
 else:
-
-    # =====================================================
-    # DASHBOARD CSS
-    # =====================================================
-
-    st.markdown(
-        """
-        <style>
-
-        /* MAIN APP */
-        .stApp {
-            background-color: #FFFFFF !important;
-        }
-
-        /* REMOVE HEADER */
-        header, div[data-testid="stHeader"] {
-            background: transparent !important;
-            height: 0px !important;
-            display: none !important;
-        }
-
-        /* MAIN CONTAINER */
-        .block-container {
-            padding-top: 0.5rem !important;
-            margin-top: -20px !important;
-            padding-bottom: 1rem !important;
-        }
-
-        /* ANIMATED TITLE CSS */
-        @keyframes slideInDown {
-            0% {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            100% {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .header-title-animated {
-            font-size: 26px !important;
-            font-weight: 700 !important;
-            color: #234263 !important;
-            text-align: center !important;
-            margin: 0 !important;
-            padding-top: 5px !important;
-            animation: slideInDown 0.8s ease-out forwards;
-            white-space: nowrap !important;
-        }
-
-        /* TABLE HEADER */
-        th {
-            background-color: #234263 !important;
-            color: white !important;
-            font-weight: bold !important;
-            text-align: center !important;
-            padding: 10px !important;
-        }
-
-        /* TABLE CELLS */
-        td {
-            background-color: #FFFFFF !important;
-            color: #31333F !important;
-            padding: 8px !important;
-            border: 1px solid #E6E6E6 !important;
-        }
-
-        /* HIDE TOOLBAR */
-        div[data-testid="stToolbar"] {
-            display: none !important;
-        }
-
-        /* SUMMARY CARDS */
-        div[data-testid="stMetric"] {
-            background-color: #FFFFFF !important;
-            border: 1px solid #D9D9D9 !important;
-            border-radius: 10px !important;
-            padding: 20px !important;
-            box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.08) !important;
-        }
-
-        div[data-testid="stMetricLabel"] {
-            color: #555555 !important;
-            font-size: 16px !important;
-            font-weight: 600 !important;
-        }
-
-        div[data-testid="stMetricValue"] {
-            color: #234263 !important;
-            font-size: 30px !important;
-            font-weight: bold !important;
-        }
-
-        /* LOGOUT BUTTON */
-        div.stButton > button[kind="primary"] {
-            background-color: #234263 !important;
-            color: #FFFFFF !important;
-            border: 1px solid #234263 !important;
-            border-radius: 6px !important;
-            font-weight: 600 !important;
-        }
-
-        div.stButton > button[kind="primary"]:hover {
-            background-color: #1A334D !important;
-            color: #FFFFFF !important;
-        }
-
-        </style>
-        """,
-        unsafe_allow_html=True,
+    # Sidebar Navigation & Logout
+    st.sidebar.title(
+        f"Welcome, {st.session_state['username'].capitalize()} 👋"
     )
 
-    # =====================================================
-    # HEADER
-    # =====================================================
+    if st.sidebar.button("Logout", use_container_width=True):
+        st.session_state["logged_in"] = False
+        st.session_state["username"] = ""
+        st.rerun()
 
-    col_logo, col_title, col_search, col_logout = st.columns([2, 4, 3, 1.2])
-
-    with col_logo:
-        if os.path.exists(logo_path):
-            st.image(logo_path, width=180)
-
-    with col_title:
-        st.markdown(
-            '<div class="header-title-animated">North As-Built Tracker</div>',
-            unsafe_allow_html=True,
-        )
-
-    with col_search:
-        search_query = st.text_input(
-            "Search",
-            placeholder="Search Phase / Project...",
-            label_visibility="collapsed",
-        )
-
-    with col_logout:
-        if st.button("Log Out", type="primary", use_container_width=True):
-            st.session_state.logged_in = False
-            st.session_state.username = ""
-            st.session_state.role = ""
-            st.rerun()
-
-    # =====================================================
-    # LOAD SHEET DATA
-    # =====================================================
-
-    @st.cache_data(ttl=10)
-    def load_sheet_data(sheet_name):
-        if not os.path.exists(excel_file_path):
-            return pd.DataFrame()
-
-        try:
-            xls = pd.ExcelFile(excel_file_path)
-            matched_sheet = None
-
-            for name in xls.sheet_names:
-                if name.strip().lower() == sheet_name.lower():
-                    matched_sheet = name
-                    break
-
-            if matched_sheet:
-                return pd.read_excel(xls, sheet_name=matched_sheet)
-
-            return pd.DataFrame()
-        except Exception:
-            return pd.DataFrame()
-
-    # =====================================================
-    # SAVE DATA
-    # =====================================================
-
-    def save_sheet_data(df_to_save, target_name):
-        if not os.path.exists(excel_file_path):
-            return
-
-        xls = pd.ExcelFile(excel_file_path)
-        actual_name = target_name
-
-        for name in xls.sheet_names:
-            if name.strip().lower() == target_name.lower():
-                actual_name = name
-                break
-
-        with pd.ExcelWriter(
-            excel_file_path,
-            mode="a",
-            engine="openpyxl",
-            if_sheet_exists="replace",
-        ) as writer:
-            df_to_save.to_excel(writer, sheet_name=actual_name, index=False)
-
-    # =====================================================
-    # LOAD DATA
-    # =====================================================
-
-    df_feeder = load_sheet_data("feeder")
-    df_dist = load_sheet_data("distribution")
-
-    all_projects = []
-    if not df_feeder.empty:
-        all_projects.append(df_feeder)
-    if not df_dist.empty:
-        all_projects.append(df_dist)
-
-    combined_df = (
-        pd.concat(all_projects, ignore_index=True)
-        if all_projects
-        else pd.DataFrame()
-    )
-
-    # =====================================================
-    # PROJECT SUMMARY
-    # =====================================================
-
-    total_projects = len(combined_df)
-    completed_projects = 0
-    pending_projects = 0
-
-    percentage_column = None
-
-    if not combined_df.empty:
-        for column in combined_df.columns:
-            column_name = str(column).strip().lower()
-            if any(
-                term in column_name
-                for term in ["progress", "completion", "%", "percent"]
-            ):
-                percentage_column = column
-                break
-
-    if percentage_column is not None:
-        progress_values = (
-            combined_df[percentage_column]
-            .astype(str)
-            .str.strip()
-            .str.replace("%", "", regex=False)
-        )
-        progress_values = pd.to_numeric(progress_values, errors="coerce")
-
-        completed_projects = int((progress_values >= 100).sum())
-        pending_projects = int((progress_values < 100).sum())
-
-    # =====================================================
-    # SUMMARY SECTION
-    # =====================================================
-
-    st.markdown(
-        """
-        <h3 style="color: #234263; margin-top: 10px; margin-bottom: 15px;">
-            Project Summary
-        </h3>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    card1, card2, card3 = st.columns(3)
-
-    with card1:
-        st.metric("Total Projects", total_projects)
-
-    with card2:
-        st.metric("Completed Projects", completed_projects)
-
-    with card3:
-        st.metric("Pending Projects", pending_projects)
+    st.title("📊 As-Built Tracker North Dashboard")
 
     if os.path.exists(excel_file_path):
-        last_updated = datetime.fromtimestamp(
-            os.path.getmtime(excel_file_path)
-        ).strftime("%d %B %Y")
+        xls = pd.ExcelFile(excel_file_path)
+        sheet_names = xls.sheet_names
+
+        selected_sheet = st.sidebar.selectbox("Select Sheet / Region", sheet_names)
+
+        if selected_sheet:
+            df = pd.read_excel(excel_file_path, sheet_name=selected_sheet)
+
+            # Search Filter by Project Name
+            search_query = st.text_input(
+                "🔍 Search by Project", placeholder="Type project name here..."
+            )
+
+            if search_query:
+                # Find matching column for project searching
+                proj_col = [
+                    c for c in df.columns if "project" in str(c).lower()
+                ]
+                if proj_col:
+                    df_filtered = df[
+                        df[proj_col[0]]
+                        .astype(str)
+                        .str.contains(search_query, case=False, na=False)
+                    ]
+                else:
+                    df_filtered = df
+            else:
+                df_filtered = df
+
+            # Table View / Admin Data Editor
+            if st.session_state["username"] == "admin":
+                st.subheader(f"Edit Data - {selected_sheet}")
+                edited_df = st.data_editor(
+                    df_filtered, num_rows="dynamic", hide_index=True
+                )
+
+                if st.button("Save Changes"):
+                    save_sheet_data(edited_df, selected_sheet)
+                    st.success("Changes saved successfully!")
+            else:
+                st.subheader(f"View Data - {selected_sheet}")
+                st.dataframe(df_filtered, hide_index=True, use_container_width=True)
     else:
-        last_updated = "N/A"
-
-    st.markdown(
-        f"""
-        <div style="text-align: center; font-size: 14px; color: #666666; margin-top: 5px; margin-bottom: 15px;">
-            🕒 Last Updated: <b>{last_updated}</b>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
-        "<hr style='margin-top: 5px; margin-bottom: 15px;'>",
-        unsafe_allow_html=True,
-    )
-
-    # =====================================================
-    # TABS & TABLES
-    # =====================================================
-
-    tab_feeder, tab_distribution = st.tabs(
-        ["📋 Feeder Data", "📋 Distribution Data"]
-    )
-
-    # --- FEEDER TAB ---
-    with tab_feeder:
-        if not df_feeder.empty:
-            if search_query:
-                mask = df_feeder.astype(str).apply(
-                    lambda x: x.str.contains(
-                        search_query, case=False, na=False
-                    )
-                ).any(axis=1)
-                filtered_feeder = df_feeder[mask]
-            else:
-                filtered_feeder = df_feeder
-
-            if st.session_state.role == "admin":
-                edited_feeder = st.data_editor(
-                    filtered_feeder,
-                    num_rows="dynamic",
-                    use_container_width=True,
-                    hide_index=True,
-                    key="edit_feeder",
-                )
-                if st.button("Save Feeder Changes"):
-                    save_sheet_data(edited_feeder, "feeder")
-                    st.success("Feeder sheet updated successfully!")
-                    st.cache_data.clear()
-                    st.rerun()
-            else:
-                st.table(filtered_feeder)
-        else:
-            st.info(
-                "No data found matching the 'feeder' sheet name inside"
-                " North As-Built Tracker.xlsx."
-            )
-
-    # --- DISTRIBUTION TAB ---
-    with tab_distribution:
-        if not df_dist.empty:
-            if search_query:
-                mask = df_dist.astype(str).apply(
-                    lambda x: x.str.contains(
-                        search_query, case=False, na=False
-                    )
-                ).any(axis=1)
-                filtered_dist = df_dist[mask]
-            else:
-                filtered_dist = df_dist
-
-            if st.session_state.role == "admin":
-                edited_dist = st.data_editor(
-                    filtered_dist,
-                    num_rows="dynamic",
-                    use_container_width=True,
-                    hide_index=True,
-                    key="edit_dist",
-                )
-                if st.button("Save Distribution Changes"):
-                    save_sheet_data(edited_dist, "distribution")
-                    st.success("Distribution sheet updated successfully!")
-                    st.cache_data.clear()
-                    st.rerun()
-            else:
-                st.table(filtered_dist)
-        else:
-            st.info(
-                "No data found matching the 'distribution' sheet name inside"
-                " North As-Built Tracker.xlsx."
-            )
+        st.error(
+            f"Excel file '{excel_file_path}' not found! Please check the repository files."
+        )
