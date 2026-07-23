@@ -2,6 +2,8 @@ import base64
 from datetime import datetime
 import os
 
+import openpyxl
+from openpyxl.styles import Alignment, Font, PatternFill
 import pandas as pd
 import streamlit as st
 
@@ -158,7 +160,6 @@ if not st.session_state.logged_in:
     col_left, col_center, col_right = st.columns([1, 1.3, 1])
 
     with col_center:
-        # Native Streamlit Form encapsulates all elements inside a single div
         with st.form(key="login_form", clear_on_submit=False):
 
             # Titles
@@ -171,7 +172,7 @@ if not st.session_state.logged_in:
                 unsafe_allow_html=True,
             )
 
-            # Username Row (Label Left, Input Right)
+            # Username Row
             u_label, u_input = st.columns([1, 2])
             with u_label:
                 st.markdown(
@@ -186,7 +187,7 @@ if not st.session_state.logged_in:
                     key="login_username",
                 )
 
-            # Password Row (Label Left, Input Right)
+            # Password Row
             p_label, p_input = st.columns([1, 2])
             with p_label:
                 st.markdown(
@@ -288,7 +289,7 @@ else:
             white-space: nowrap !important;
         }
 
-        /* TABLE HEADER */
+        /* TABLE HEADER IN STREAMLIT UI */
         th {
             background-color: #234263 !important;
             color: white !important;
@@ -310,25 +311,25 @@ else:
             display: none !important;
         }
 
-        /* SUMMARY CARDS */
+        /* OPTION 2: DUAL-SHADE GRADIENT SUMMARY CARDS */
         div[data-testid="stMetric"] {
-            background-color: #FFFFFF !important;
-            border: 1px solid #D9D9D9 !important;
-            border-radius: 10px !important;
+            background: linear-gradient(135deg, #eef3f8 0%, #ffffff 100%) !important;
+            border: 1px solid #d0dbe5 !important;
+            border-radius: 12px !important;
             padding: 20px !important;
-            box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.08) !important;
+            box-shadow: 0px 4px 12px rgba(35, 66, 99, 0.08) !important;
         }
 
         div[data-testid="stMetricLabel"] {
-            color: #555555 !important;
+            color: #4a5568 !important;
             font-size: 16px !important;
             font-weight: 600 !important;
         }
 
         div[data-testid="stMetricValue"] {
             color: #234263 !important;
-            font-size: 30px !important;
-            font-weight: bold !important;
+            font-size: 32px !important;
+            font-weight: 800 !important;
         }
 
         /* LOGOUT BUTTON */
@@ -406,7 +407,7 @@ else:
             return pd.DataFrame()
 
     # =====================================================
-    # SAVE DATA
+    # SAVE DATA WITH TRANSWORLD BLUE EXCEL HEADER STYLING
     # =====================================================
 
     def save_sheet_data(df_to_save, target_name):
@@ -428,6 +429,20 @@ else:
             if_sheet_exists="replace",
         ) as writer:
             df_to_save.to_excel(writer, sheet_name=actual_name, index=False)
+
+            # Apply Transworld Blue Styling to Excel 1st Row
+            workbook = writer.book
+            worksheet = workbook[actual_name]
+
+            header_fill = PatternFill(
+                start_color="234263", end_color="234263", fill_type="solid"
+            )
+            header_font = Font(color="FFFFFF", bold=True, size=11)
+
+            for cell in worksheet[1]:
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = Alignment(horizontal="center", vertical="center")
 
     # =====================================================
     # LOAD DATA
