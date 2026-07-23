@@ -9,7 +9,7 @@ import streamlit as st
 # 1. PAGE CONFIGURATION
 # =========================================================
 
-st.set_page_config(page_title="Transworld Home Dashboard", layout="wide")
+st.set_page_config(page_title="As-Built Tracker North", layout="wide")
 
 
 # =========================================================
@@ -79,6 +79,11 @@ if not st.session_state.logged_in:
 
             .block-container {{
                 padding-top: 5rem !important;
+            }}
+
+            /* Hide 'Press Enter to submit form' instruction hint */
+            div[data-testid="InputInstructions"] {{
+                display: none !important;
             }}
 
             /* TARGET STREAMLIT FORM AS THE OUTER DARK TRANSPARENT CARD */
@@ -158,7 +163,7 @@ if not st.session_state.logged_in:
 
             # Titles
             st.markdown(
-                "<div class='main-title'>Transworld Home</div>",
+                "<div class='main-title'>As-Built Tracker North</div>",
                 unsafe_allow_html=True,
             )
             st.markdown(
@@ -364,7 +369,7 @@ else:
     with col_search:
         search_query = st.text_input(
             "Search",
-            placeholder="Search Phase / Project...",
+            placeholder="Search Project...",
             label_visibility="collapsed",
         )
 
