@@ -240,7 +240,7 @@ if not st.session_state.logged_in:
 else:
 
     # =====================================================
-    # DASHBOARD CSS
+    # DASHBOARD CSS (TRANSWORLD LIGHT THEME UPDATED)
     # =====================================================
 
     st.markdown(
@@ -289,21 +289,35 @@ else:
             white-space: nowrap !important;
         }
 
-        /* TABLE HEADER IN STREAMLIT UI */
-        th {
-            background-color: #234263 !important;
-            color: white !important;
-            font-weight: bold !important;
-            text-align: center !important;
-            padding: 10px !important;
+        /* TRANSWORLD LIGHT THEME DATA EDITOR & TABLE STYLING */
+        div[data-testid="stDataFrame"], div[data-testid="stDataEditor"] {
+            border: 1px solid #CBD5E1 !important;
+            border-radius: 8px !important;
+            overflow: hidden !important;
+            box-shadow: 0px 2px 8px rgba(0,0,0,0.05) !important;
         }
 
-        /* TABLE CELLS */
-        td {
+        /* Table Headers - Light Transworld Blue */
+        div[data-testid="stDataFrame"] th, div[data-testid="stDataEditor"] th, th {
+            background-color: #EBF3FA !important;
+            color: #1E293B !important;
+            font-weight: 700 !important;
+            font-size: 15px !important;
+            border-bottom: 2px solid #CBD5E1 !important;
+        }
+
+        /* Table Text / Cells - Highly Prominent & Dark Text */
+        div[data-testid="stDataFrame"] td, div[data-testid="stDataEditor"] td, td {
+            color: #0F172A !important; /* Prominent Dark Text */
+            font-size: 14px !important;
+            font-weight: 600 !important;
             background-color: #FFFFFF !important;
-            color: #31333F !important;
-            padding: 8px !important;
-            border: 1px solid #E6E6E6 !important;
+        }
+
+        /* Input text inside editable cells */
+        div[data-testid="stDataEditor"] input {
+            color: #0F172A !important;
+            font-weight: 600 !important;
         }
 
         /* HIDE TOOLBAR */
@@ -311,7 +325,7 @@ else:
             display: none !important;
         }
 
-        /* DUAL COLOR: WHITE BOX WITH TRANSWORLD BLUE LEFT BORDER & TEXT */
+        /* DUAL COLOR METRIC CARDS */
         div[data-testid="stMetric"] {
             background-color: #FFFFFF !important;
             border: 1px solid #E2E8F0 !important;
@@ -322,13 +336,13 @@ else:
         }
 
         div[data-testid="stMetricLabel"] {
-            color: #4A5568 !important; /* Clean readable dark text */
+            color: #4A5568 !important;
             font-size: 16px !important;
             font-weight: 600 !important;
         }
 
         div[data-testid="stMetricValue"] {
-            color: #234263 !important; /* Transworld Blue Number */
+            color: #234263 !important;
             font-size: 34px !important;
             font-weight: 800 !important;
         }
