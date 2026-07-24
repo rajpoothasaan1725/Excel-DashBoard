@@ -240,7 +240,7 @@ if not st.session_state.logged_in:
 else:
 
     # =====================================================
-    # DASHBOARD CSS (TRANSWORLD LIGHT THEME UPDATED)
+    # DASHBOARD CSS (DEEP OVERRIDE FOR DATA EDITOR TEXT & LIGHT THEME)
     # =====================================================
 
     st.markdown(
@@ -289,35 +289,37 @@ else:
             white-space: nowrap !important;
         }
 
-        /* TRANSWORLD LIGHT THEME DATA EDITOR & TABLE STYLING */
-        div[data-testid="stDataFrame"], div[data-testid="stDataEditor"] {
-            border: 1px solid #CBD5E1 !important;
+        /* HARD OVERRIDE FOR DATA EDITOR / TABLE TEXT & HEADERS */
+        div[data-testid="stDataEditor"], div[data-testid="stDataFrame"], .stTable {
+            border: 2px solid #CBD5E1 !important;
             border-radius: 8px !important;
-            overflow: hidden !important;
-            box-shadow: 0px 2px 8px rgba(0,0,0,0.05) !important;
-        }
-
-        /* Table Headers - Light Transworld Blue */
-        div[data-testid="stDataFrame"] th, div[data-testid="stDataEditor"] th, th {
-            background-color: #EBF3FA !important;
-            color: #1E293B !important;
+            box-shadow: 0px 4px 12px rgba(35, 66, 99, 0.05) !important;
+            color: #000000 !important;
             font-weight: 700 !important;
+        }
+
+        /* Direct Canvas & Grid Text Prominence Target */
+        div[data-testid="stDataEditor"] * {
+            color: #0A0A0A !important;
+            font-weight: 700 !important;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+        }
+
+        /* Headers Light Transworld Tone */
+        div[data-testid="stDataEditor"] header, 
+        div[data-testid="stDataFrame"] header,
+        th {
+            background-color: #EBF3FA !important;
+            color: #234263 !important;
+            font-weight: 800 !important;
             font-size: 15px !important;
-            border-bottom: 2px solid #CBD5E1 !important;
+            border-bottom: 2px solid #234263 !important;
         }
 
-        /* Table Text / Cells - Highly Prominent & Dark Text */
-        div[data-testid="stDataFrame"] td, div[data-testid="stDataEditor"] td, td {
-            color: #0F172A !important; /* Prominent Dark Text */
-            font-size: 14px !important;
-            font-weight: 600 !important;
+        /* Table Cells Text & Background Force */
+        td, div[data-testid="stDataEditor"] canvas {
             background-color: #FFFFFF !important;
-        }
-
-        /* Input text inside editable cells */
-        div[data-testid="stDataEditor"] input {
-            color: #0F172A !important;
-            font-weight: 600 !important;
+            color: #000000 !important;
         }
 
         /* HIDE TOOLBAR */
@@ -329,7 +331,7 @@ else:
         div[data-testid="stMetric"] {
             background-color: #FFFFFF !important;
             border: 1px solid #E2E8F0 !important;
-            border-left: 6px solid #234263 !important; /* Transworld Blue Border Accent */
+            border-left: 6px solid #234263 !important;
             border-radius: 12px !important;
             padding: 20px !important;
             box-shadow: 0px 4px 15px rgba(35, 66, 99, 0.08) !important;
@@ -563,6 +565,16 @@ else:
         ["📋 Feeder Data", "📋 Distribution Data"]
     )
 
+    # Helper function for text formatting in tables
+    def build_column_config(df):
+        config = {}
+        for col in df.columns:
+            config[col] = st.column_config.TextColumn(
+                col,
+                required=False,
+            )
+        return config
+
     # --- FEEDER TAB ---
     with tab_feeder:
         if not df_feeder.empty:
@@ -582,6 +594,7 @@ else:
                     num_rows="dynamic",
                     use_container_width=True,
                     hide_index=True,
+                    column_config=build_column_config(filtered_feeder),
                     key="edit_feeder",
                 )
                 if st.button("Save Feeder Changes"):
@@ -590,7 +603,12 @@ else:
                     st.cache_data.clear()
                     st.rerun()
             else:
-                st.table(filtered_feeder)
+                st.dataframe(
+                    filtered_feeder,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config=build_column_config(filtered_feeder),
+                )
         else:
             st.info(
                 "No data found matching the 'feeder' sheet name inside"
@@ -616,6 +634,7 @@ else:
                     num_rows="dynamic",
                     use_container_width=True,
                     hide_index=True,
+                    column_config=build_column_config(filtered_dist),
                     key="edit_dist",
                 )
                 if st.button("Save Distribution Changes"):
@@ -624,7 +643,12 @@ else:
                     st.cache_data.clear()
                     st.rerun()
             else:
-                st.table(filtered_dist)
+                st.dataframe(
+                    filtered_dist,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config=build_column_config(filtered_dist),
+                )
         else:
             st.info(
                 "No data found matching the 'distribution' sheet name inside"
