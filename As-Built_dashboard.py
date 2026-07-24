@@ -35,7 +35,7 @@ if "role" not in st.session_state:
 login_bg_path = "login_bg.png"
 logo_path = "transworld_logo.png"
 
-# North Region Excel File (Active File)
+# North Region Excel File
 north_excel_path = "North As-Built Tracker.xlsx"
 
 
@@ -206,12 +206,17 @@ else:
             white-space: nowrap !important;
         }
 
-        /* DATA GRID / EDITORS CONTRAST ENHANCEMENT */
+        /* DATA GRID & DATAFRAME UNIFIED STYLING FOR BOTH ADMIN & VIEWER */
         div[data-testid="stDataEditor"], div[data-testid="stDataFrame"], .stTable {
             border: 1px solid #CBD5E1 !important;
             border-radius: 8px !important;
             box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.05) !important;
             background-color: #FFFFFF !important;
+        }
+
+        /* FORCE HIGH CONTRAST DARK TEXT IN TABLES FOR VIEWER AS WELL */
+        div[data-testid="stDataEditor"] *, div[data-testid="stDataFrame"] * {
+            color: #0F172A !important;
         }
 
         /* METRIC CARDS */
@@ -265,8 +270,7 @@ else:
 
     with col_title:
         st.markdown(
-            '<div class="header-title-animated">National As-Built'
-            " Tracker</div>",
+            '<div class="header-title-animated">National As-Built Tracker</div>',
             unsafe_allow_html=True,
         )
 
@@ -472,8 +476,11 @@ else:
                         st.cache_data.clear()
                         st.rerun()
                 else:
+                    # Render st.dataframe with identical container styling
                     st.dataframe(
-                        filtered, use_container_width=True, hide_index=True
+                        filtered,
+                        use_container_width=True,
+                        hide_index=True,
                     )
             else:
                 st.info("No Feeder data found in North Tracker excel file.")
@@ -514,8 +521,11 @@ else:
                         st.cache_data.clear()
                         st.rerun()
                 else:
+                    # Render st.dataframe with identical container styling
                     st.dataframe(
-                        filtered, use_container_width=True, hide_index=True
+                        filtered,
+                        use_container_width=True,
+                        hide_index=True,
                     )
             else:
                 st.info(
@@ -523,7 +533,7 @@ else:
                 )
 
     # -----------------------------------------------------
-    # 2. CENTRAL REGION TAB (TRANSWORLD SHADED PLACEHOLDER)
+    # 2. CENTRAL REGION TAB
     # -----------------------------------------------------
     with tab_central:
         st.markdown(
@@ -540,7 +550,7 @@ else:
         )
 
     # -----------------------------------------------------
-    # 3. SOUTH REGION TAB (TRANSWORLD SHADED PLACEHOLDER)
+    # 3. SOUTH REGION TAB
     # -----------------------------------------------------
     with tab_south:
         st.markdown(
