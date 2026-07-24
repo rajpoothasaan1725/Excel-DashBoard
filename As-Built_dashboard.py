@@ -311,27 +311,26 @@ else:
             display: none !important;
         }
 
-        /* PROMINENT TRANSWORLD NAVY BLUE SUMMARY METRIC CARDS */
+        /* DUAL COLOR: WHITE BOX WITH TRANSWORLD BLUE LEFT BORDER & TEXT */
         div[data-testid="stMetric"] {
-            background: linear-gradient(135deg, #234263 0%, #13263b 100%) !important;
-            border: 1px solid #3b628c !important;
+            background-color: #FFFFFF !important;
+            border: 1px solid #E2E8F0 !important;
+            border-left: 6px solid #234263 !important; /* Transworld Blue Border Accent */
             border-radius: 12px !important;
-            padding: 22px !important;
-            box-shadow: 0px 8px 20px rgba(35, 66, 99, 0.35) !important;
+            padding: 20px !important;
+            box-shadow: 0px 4px 15px rgba(35, 66, 99, 0.08) !important;
         }
 
         div[data-testid="stMetricLabel"] {
-            color: #E2E8F0 !important;
-            font-size: 17px !important;
+            color: #4A5568 !important; /* Clean readable dark text */
+            font-size: 16px !important;
             font-weight: 600 !important;
-            letter-spacing: 0.5px !important;
         }
 
         div[data-testid="stMetricValue"] {
-            color: #FFFFFF !important;
-            font-size: 36px !important;
+            color: #234263 !important; /* Transworld Blue Number */
+            font-size: 34px !important;
             font-weight: 800 !important;
-            text-shadow: 0px 2px 4px rgba(0, 0, 0, 0.3) !important;
         }
 
         /* LOGOUT BUTTON */
