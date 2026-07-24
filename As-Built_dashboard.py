@@ -240,7 +240,7 @@ if not st.session_state.logged_in:
 else:
 
     # =====================================================
-    # DASHBOARD CSS (DEEP OVERRIDE FOR DATA EDITOR TEXT & LIGHT THEME)
+    # DASHBOARD CSS (CLEAN LIGHT THEME WITH PROMINENT TEXT)
     # =====================================================
 
     st.markdown(
@@ -289,37 +289,18 @@ else:
             white-space: nowrap !important;
         }
 
-        /* HARD OVERRIDE FOR DATA EDITOR / TABLE TEXT & HEADERS */
+        /* TABLE & DATA EDITOR CONTAINER STYLING */
         div[data-testid="stDataEditor"], div[data-testid="stDataFrame"], .stTable {
-            border: 2px solid #CBD5E1 !important;
+            border: 1px solid #CBD5E1 !important;
             border-radius: 8px !important;
-            box-shadow: 0px 4px 12px rgba(35, 66, 99, 0.05) !important;
-            color: #000000 !important;
-            font-weight: 700 !important;
-        }
-
-        /* Direct Canvas & Grid Text Prominence Target */
-        div[data-testid="stDataEditor"] * {
-            color: #0A0A0A !important;
-            font-weight: 700 !important;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-        }
-
-        /* Headers Light Transworld Tone */
-        div[data-testid="stDataEditor"] header, 
-        div[data-testid="stDataFrame"] header,
-        th {
-            background-color: #EBF3FA !important;
-            color: #234263 !important;
-            font-weight: 800 !important;
-            font-size: 15px !important;
-            border-bottom: 2px solid #234263 !important;
-        }
-
-        /* Table Cells Text & Background Force */
-        td, div[data-testid="stDataEditor"] canvas {
+            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.05) !important;
             background-color: #FFFFFF !important;
-            color: #000000 !important;
+        }
+
+        /* FORCE HIGH CONTRAST DARK TEXT FOR DATA GRID */
+        div[data-testid="stDataEditor"] iframe,
+        div[data-testid="stDataFrame"] iframe {
+            filter: contrast(110%);
         }
 
         /* HIDE TOOLBAR */
@@ -565,16 +546,6 @@ else:
         ["📋 Feeder Data", "📋 Distribution Data"]
     )
 
-    # Helper function for text formatting in tables
-    def build_column_config(df):
-        config = {}
-        for col in df.columns:
-            config[col] = st.column_config.TextColumn(
-                col,
-                required=False,
-            )
-        return config
-
     # --- FEEDER TAB ---
     with tab_feeder:
         if not df_feeder.empty:
@@ -594,7 +565,6 @@ else:
                     num_rows="dynamic",
                     use_container_width=True,
                     hide_index=True,
-                    column_config=build_column_config(filtered_feeder),
                     key="edit_feeder",
                 )
                 if st.button("Save Feeder Changes"):
@@ -607,7 +577,6 @@ else:
                     filtered_feeder,
                     use_container_width=True,
                     hide_index=True,
-                    column_config=build_column_config(filtered_feeder),
                 )
         else:
             st.info(
@@ -634,7 +603,6 @@ else:
                     num_rows="dynamic",
                     use_container_width=True,
                     hide_index=True,
-                    column_config=build_column_config(filtered_dist),
                     key="edit_dist",
                 )
                 if st.button("Save Distribution Changes"):
@@ -647,7 +615,6 @@ else:
                     filtered_dist,
                     use_container_width=True,
                     hide_index=True,
-                    column_config=build_column_config(filtered_dist),
                 )
         else:
             st.info(
