@@ -311,25 +311,27 @@ else:
             display: none !important;
         }
 
-        /* OPTION 2: DUAL-SHADE GRADIENT SUMMARY CARDS */
+        /* PROMINENT TRANSWORLD NAVY BLUE SUMMARY METRIC CARDS */
         div[data-testid="stMetric"] {
-            background: linear-gradient(135deg, #eef3f8 0%, #ffffff 100%) !important;
-            border: 1px solid #d0dbe5 !important;
+            background: linear-gradient(135deg, #234263 0%, #13263b 100%) !important;
+            border: 1px solid #3b628c !important;
             border-radius: 12px !important;
-            padding: 20px !important;
-            box-shadow: 0px 4px 12px rgba(35, 66, 99, 0.08) !important;
+            padding: 22px !important;
+            box-shadow: 0px 8px 20px rgba(35, 66, 99, 0.35) !important;
         }
 
         div[data-testid="stMetricLabel"] {
-            color: #4a5568 !important;
-            font-size: 16px !important;
+            color: #E2E8F0 !important;
+            font-size: 17px !important;
             font-weight: 600 !important;
+            letter-spacing: 0.5px !important;
         }
 
         div[data-testid="stMetricValue"] {
-            color: #234263 !important;
-            font-size: 32px !important;
+            color: #FFFFFF !important;
+            font-size: 36px !important;
             font-weight: 800 !important;
+            text-shadow: 0px 2px 4px rgba(0, 0, 0, 0.3) !important;
         }
 
         /* LOGOUT BUTTON */
