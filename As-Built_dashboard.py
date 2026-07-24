@@ -11,7 +11,7 @@ import streamlit as st
 # 1. PAGE CONFIGURATION
 # =========================================================
 
-st.set_page_config(page_title="As-Built Tracker North", layout="wide")
+st.set_page_config(page_title="As-Built Tracker Portal", layout="wide")
 
 
 # =========================================================
@@ -29,17 +29,14 @@ if "role" not in st.session_state:
 
 
 # =========================================================
-# 3. FILE PATHS (Relative Paths for Cloud Deployment)
+# 3. FILE PATHS
 # =========================================================
 
-# Login background image
 login_bg_path = "login_bg.png"
-
-# Excel file
-excel_file_path = "North As-Built Tracker.xlsx"
-
-# Transworld logo
 logo_path = "transworld_logo.png"
+
+# North Region Excel File (Active File)
+north_excel_path = "North As-Built Tracker.xlsx"
 
 
 # =========================================================
@@ -48,24 +45,13 @@ logo_path = "transworld_logo.png"
 
 if not st.session_state.logged_in:
 
-    # =====================================================
-    # LOAD LOGIN BACKGROUND
-    # =====================================================
-
     if os.path.exists(login_bg_path):
-
         with open(login_bg_path, "rb") as image_file:
             encoded_image = base64.b64encode(image_file.read()).decode("utf-8")
-
-        # =================================================
-        # LOGIN PAGE CSS
-        # =================================================
 
         st.markdown(
             f"""
             <style>
-
-            /* Full Screen Background Image */
             .stApp {{
                 background-image: url("data:image/png;base64,{encoded_image}");
                 background-size: cover;
@@ -73,51 +59,32 @@ if not st.session_state.logged_in:
                 background-repeat: no-repeat;
                 background-attachment: fixed;
             }}
-
-            /* Remove Streamlit Header & Adjust Top Padding */
-            header, div[data-testid="stHeader"] {{
-                display: none !important;
-            }}
-
-            .block-container {{
-                padding-top: 5rem !important;
-            }}
-
-            /* Hide 'Press Enter to submit form' instruction hint */
-            div[data-testid="InputInstructions"] {{
-                display: none !important;
-            }}
-
-            /* TARGET STREAMLIT FORM AS THE OUTER DARK TRANSPARENT CARD */
+            header, div[data-testid="stHeader"] {{ display: none !important; }}
+            .block-container {{ padding-top: 5rem !important; }}
+            div[data-testid="InputInstructions"] {{ display: none !important; }}
+            
             div[data-testid="stForm"] {{
-                background: rgba(0, 0, 0, 0.65) !important; /* Semi-transparent dark overlay */
+                background: rgba(0, 0, 0, 0.65) !important;
                 border: 2px solid rgba(255, 255, 255, 0.3) !important;
                 border-radius: 16px !important;
                 padding: 30px 25px !important;
                 box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.7) !important;
                 backdrop-filter: blur(8px) !important;
             }}
-
-            /* Header Titles */
             .main-title {{
                 color: #FFFFFF !important;
                 font-size: 32px !important;
                 font-weight: 700 !important;
                 text-align: center !important;
                 margin-bottom: 2px !important;
-                font-family: sans-serif;
             }}
-
             .sub-title {{
                 color: #E2E8F0 !important;
                 font-size: 20px !important;
                 font-weight: 500 !important;
                 text-align: center !important;
                 margin-bottom: 25px !important;
-                font-family: sans-serif;
             }}
-
-            /* Input Fields - Solid White Rectangles */
             div[data-testid="stTextInput"] input {{
                 background-color: #FFFFFF !important;
                 color: #000000 !important;
@@ -126,8 +93,6 @@ if not st.session_state.logged_in:
                 height: 42px !important;
                 font-size: 16px !important;
             }}
-
-            /* Bright Blue Button */
             div[data-testid="stFormSubmitButton"] > button {{
                 background-color: #007bff !important;
                 color: #FFFFFF !important;
@@ -137,34 +102,18 @@ if not st.session_state.logged_in:
                 font-size: 18px !important;
                 font-weight: 600 !important;
                 margin-top: 10px !important;
-                box-shadow: 0px 4px 12px rgba(0, 123, 255, 0.4) !important;
             }}
-
-            div[data-testid="stFormSubmitButton"] > button:hover {{
-                background-color: #0056b3 !important;
-                color: #FFFFFF !important;
-            }}
-
             </style>
             """,
             unsafe_allow_html=True,
         )
 
-    else:
-        st.error(f"Login background image not found: {login_bg_path}")
-
-    # =====================================================
-    # LOGIN FORM LAYOUT
-    # =====================================================
-
     col_left, col_center, col_right = st.columns([1, 1.3, 1])
 
     with col_center:
         with st.form(key="login_form", clear_on_submit=False):
-
-            # Titles
             st.markdown(
-                "<div class='main-title'>As-Built Tracker North</div>",
+                "<div class='main-title'>National As-Built Tracker</div>",
                 unsafe_allow_html=True,
             )
             st.markdown(
@@ -172,12 +121,11 @@ if not st.session_state.logged_in:
                 unsafe_allow_html=True,
             )
 
-            # Username Row
             u_label, u_input = st.columns([1, 2])
             with u_label:
                 st.markdown(
-                    "<p style='color: white; font-size: 19px; font-weight: 500;"
-                    " margin-top: 8px;'>Username</p>",
+                    "<p style='color: white; font-size: 19px; font-weight:"
+                    " 500; margin-top: 8px;'>Username</p>",
                     unsafe_allow_html=True,
                 )
             with u_input:
@@ -187,12 +135,11 @@ if not st.session_state.logged_in:
                     key="login_username",
                 )
 
-            # Password Row
             p_label, p_input = st.columns([1, 2])
             with p_label:
                 st.markdown(
-                    "<p style='color: white; font-size: 19px; font-weight: 500;"
-                    " margin-top: 8px;'>Password</p>",
+                    "<p style='color: white; font-size: 19px; font-weight:"
+                    " 500; margin-top: 8px;'>Password</p>",
                     unsafe_allow_html=True,
                 )
             with p_input:
@@ -203,7 +150,6 @@ if not st.session_state.logged_in:
                     key="login_password",
                 )
 
-            # Centered Blue Login Button
             b_left, b_center, b_right = st.columns([0.8, 1.4, 0.8])
             with b_center:
                 submitted = st.form_submit_button(
@@ -219,7 +165,6 @@ if not st.session_state.logged_in:
                     st.session_state.username = "admin"
                     st.session_state.role = "admin"
                     st.rerun()
-
                 elif (
                     username_input == "viewer"
                     and password_input == "transworldview"
@@ -228,7 +173,6 @@ if not st.session_state.logged_in:
                     st.session_state.username = "viewer"
                     st.session_state.role = "viewer"
                     st.rerun()
-
                 else:
                     st.error("❌ Invalid Username or Password")
 
@@ -239,43 +183,16 @@ if not st.session_state.logged_in:
 
 else:
 
-    # =====================================================
-    # DASHBOARD CSS (CLEAN LIGHT THEME WITH PROMINENT TEXT)
-    # =====================================================
-
     st.markdown(
         """
         <style>
+        .stApp { background-color: #FFFFFF !important; }
+        header, div[data-testid="stHeader"] { display: none !important; }
+        .block-container { padding-top: 0.5rem !important; margin-top: -20px !important; }
 
-        /* MAIN APP */
-        .stApp {
-            background-color: #FFFFFF !important;
-        }
-
-        /* REMOVE HEADER */
-        header, div[data-testid="stHeader"] {
-            background: transparent !important;
-            height: 0px !important;
-            display: none !important;
-        }
-
-        /* MAIN CONTAINER */
-        .block-container {
-            padding-top: 0.5rem !important;
-            margin-top: -20px !important;
-            padding-bottom: 1rem !important;
-        }
-
-        /* ANIMATED TITLE CSS */
         @keyframes slideInDown {
-            0% {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
-            100% {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            0% { opacity: 0; transform: translateY(-20px); }
+            100% { opacity: 1; transform: translateY(0); }
         }
 
         .header-title-animated {
@@ -289,7 +206,7 @@ else:
             white-space: nowrap !important;
         }
 
-        /* TABLE & DATA EDITOR CONTAINER STYLING */
+        /* DATA GRID / EDITORS CONTRAST ENHANCEMENT */
         div[data-testid="stDataEditor"], div[data-testid="stDataFrame"], .stTable {
             border: 1px solid #CBD5E1 !important;
             border-radius: 8px !important;
@@ -297,18 +214,7 @@ else:
             background-color: #FFFFFF !important;
         }
 
-        /* FORCE HIGH CONTRAST DARK TEXT FOR DATA GRID */
-        div[data-testid="stDataEditor"] iframe,
-        div[data-testid="stDataFrame"] iframe {
-            filter: contrast(110%);
-        }
-
-        /* HIDE TOOLBAR */
-        div[data-testid="stToolbar"] {
-            display: none !important;
-        }
-
-        /* DUAL COLOR METRIC CARDS */
+        /* METRIC CARDS */
         div[data-testid="stMetric"] {
             background-color: #FFFFFF !important;
             border: 1px solid #E2E8F0 !important;
@@ -317,20 +223,22 @@ else:
             padding: 20px !important;
             box-shadow: 0px 4px 15px rgba(35, 66, 99, 0.08) !important;
         }
+        div[data-testid="stMetricLabel"] { color: #4A5568 !important; font-size: 16px !important; font-weight: 600 !important; }
+        div[data-testid="stMetricValue"] { color: #234263 !important; font-size: 34px !important; font-weight: 800 !important; }
 
-        div[data-testid="stMetricLabel"] {
-            color: #4A5568 !important;
-            font-size: 16px !important;
-            font-weight: 600 !important;
-        }
-
-        div[data-testid="stMetricValue"] {
+        /* CUSTOM TRANSWORLD PLACEHOLDER CARD */
+        .tw-placeholder-card {
+            background-color: #EBF3FA !important;
+            border-left: 6px solid #234263 !important;
+            border-radius: 10px !important;
+            padding: 20px 25px !important;
             color: #234263 !important;
-            font-size: 34px !important;
-            font-weight: 800 !important;
+            font-size: 16px !important;
+            margin-top: 15px !important;
+            box-shadow: 0px 4px 12px rgba(35, 66, 99, 0.06) !important;
         }
 
-        /* LOGOUT BUTTON */
+        /* BUTTONS */
         div.stButton > button[kind="primary"] {
             background-color: #234263 !important;
             color: #FFFFFF !important;
@@ -339,11 +247,7 @@ else:
             font-weight: 600 !important;
         }
 
-        div.stButton > button[kind="primary"]:hover {
-            background-color: #1A334D !important;
-            color: #FFFFFF !important;
-        }
-
+        div[data-testid="stToolbar"] { display: none !important; }
         </style>
         """,
         unsafe_allow_html=True,
@@ -361,7 +265,8 @@ else:
 
     with col_title:
         st.markdown(
-            '<div class="header-title-animated">North As-Built Tracker</div>',
+            '<div class="header-title-animated">National As-Built'
+            " Tracker</div>",
             unsafe_allow_html=True,
         )
 
@@ -380,16 +285,16 @@ else:
             st.rerun()
 
     # =====================================================
-    # LOAD SHEET DATA
+    # HELPER FUNCTIONS FOR NORTH DATA
     # =====================================================
 
     @st.cache_data(ttl=10)
-    def load_sheet_data(sheet_name):
-        if not os.path.exists(excel_file_path):
+    def load_sheet_data(file_path, sheet_name):
+        if not os.path.exists(file_path):
             return pd.DataFrame()
 
         try:
-            xls = pd.ExcelFile(excel_file_path)
+            xls = pd.ExcelFile(file_path)
             matched_sheet = None
 
             for name in xls.sheet_names:
@@ -404,15 +309,11 @@ else:
         except Exception:
             return pd.DataFrame()
 
-    # =====================================================
-    # SAVE DATA WITH TRANSWORLD BLUE EXCEL HEADER STYLING
-    # =====================================================
-
-    def save_sheet_data(df_to_save, target_name):
-        if not os.path.exists(excel_file_path):
+    def save_sheet_data(file_path, df_to_save, target_name):
+        if not os.path.exists(file_path):
             return
 
-        xls = pd.ExcelFile(excel_file_path)
+        xls = pd.ExcelFile(file_path)
         actual_name = target_name
 
         for name in xls.sheet_names:
@@ -421,14 +322,10 @@ else:
                 break
 
         with pd.ExcelWriter(
-            excel_file_path,
-            mode="a",
-            engine="openpyxl",
-            if_sheet_exists="replace",
+            file_path, mode="a", engine="openpyxl", if_sheet_exists="replace"
         ) as writer:
             df_to_save.to_excel(writer, sheet_name=actual_name, index=False)
 
-            # Apply Transworld Blue Styling to Excel 1st Row
             workbook = writer.book
             worksheet = workbook[actual_name]
 
@@ -440,184 +337,221 @@ else:
             for cell in worksheet[1]:
                 cell.fill = header_fill
                 cell.font = header_font
-                cell.alignment = Alignment(horizontal="center", vertical="center")
+                cell.alignment = Alignment(
+                    horizontal="center", vertical="center"
+                )
 
     # =====================================================
-    # LOAD DATA
+    # MAIN REGIONS TABS
     # =====================================================
 
-    df_feeder = load_sheet_data("feeder")
-    df_dist = load_sheet_data("distribution")
-
-    all_projects = []
-    if not df_feeder.empty:
-        all_projects.append(df_feeder)
-    if not df_dist.empty:
-        all_projects.append(df_dist)
-
-    combined_df = (
-        pd.concat(all_projects, ignore_index=True)
-        if all_projects
-        else pd.DataFrame()
+    tab_north, tab_central, tab_south = st.tabs(
+        ["🗺️ North Region", "🗺️ Central Region", "🗺️ South Region"]
     )
 
-    # =====================================================
-    # PROJECT SUMMARY
-    # =====================================================
+    # -----------------------------------------------------
+    # 1. NORTH REGION TAB (ACTIVE & FULLY WORKING)
+    # -----------------------------------------------------
+    with tab_north:
 
-    total_projects = len(combined_df)
-    completed_projects = 0
-    pending_projects = 0
+        df_feeder = load_sheet_data(north_excel_path, "feeder")
+        df_dist = load_sheet_data(north_excel_path, "distribution")
 
-    percentage_column = None
-
-    if not combined_df.empty:
-        for column in combined_df.columns:
-            column_name = str(column).strip().lower()
-            if any(
-                term in column_name
-                for term in ["progress", "completion", "%", "percent"]
-            ):
-                percentage_column = column
-                break
-
-    if percentage_column is not None:
-        progress_values = (
-            combined_df[percentage_column]
-            .astype(str)
-            .str.strip()
-            .str.replace("%", "", regex=False)
-        )
-        progress_values = pd.to_numeric(progress_values, errors="coerce")
-
-        completed_projects = int((progress_values >= 100).sum())
-        pending_projects = int((progress_values < 100).sum())
-
-    # =====================================================
-    # SUMMARY SECTION
-    # =====================================================
-
-    st.markdown(
-        """
-        <h3 style="color: #234263; margin-top: 10px; margin-bottom: 15px;">
-            Project Summary
-        </h3>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    card1, card2, card3 = st.columns(3)
-
-    with card1:
-        st.metric("Total Projects", total_projects)
-
-    with card2:
-        st.metric("Completed Projects", completed_projects)
-
-    with card3:
-        st.metric("Pending Projects", pending_projects)
-
-    if os.path.exists(excel_file_path):
-        last_updated = datetime.fromtimestamp(
-            os.path.getmtime(excel_file_path)
-        ).strftime("%d %B %Y")
-    else:
-        last_updated = "N/A"
-
-    st.markdown(
-        f"""
-        <div style="text-align: center; font-size: 14px; color: #666666; margin-top: 5px; margin-bottom: 15px;">
-            🕒 Last Updated: <b>{last_updated}</b>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    st.markdown(
-        "<hr style='margin-top: 5px; margin-bottom: 15px;'>",
-        unsafe_allow_html=True,
-    )
-
-    # =====================================================
-    # TABS & TABLES
-    # =====================================================
-
-    tab_feeder, tab_distribution = st.tabs(
-        ["📋 Feeder Data", "📋 Distribution Data"]
-    )
-
-    # --- FEEDER TAB ---
-    with tab_feeder:
+        all_projects = []
         if not df_feeder.empty:
-            if search_query:
-                mask = df_feeder.astype(str).apply(
-                    lambda x: x.str.contains(
-                        search_query, case=False, na=False
-                    )
-                ).any(axis=1)
-                filtered_feeder = df_feeder[mask]
-            else:
-                filtered_feeder = df_feeder
-
-            if st.session_state.role == "admin":
-                edited_feeder = st.data_editor(
-                    filtered_feeder,
-                    num_rows="dynamic",
-                    use_container_width=True,
-                    hide_index=True,
-                    key="edit_feeder",
-                )
-                if st.button("Save Feeder Changes"):
-                    save_sheet_data(edited_feeder, "feeder")
-                    st.success("Feeder sheet updated successfully!")
-                    st.cache_data.clear()
-                    st.rerun()
-            else:
-                st.dataframe(
-                    filtered_feeder,
-                    use_container_width=True,
-                    hide_index=True,
-                )
-        else:
-            st.info(
-                "No data found matching the 'feeder' sheet name inside"
-                " North As-Built Tracker.xlsx."
-            )
-
-    # --- DISTRIBUTION TAB ---
-    with tab_distribution:
+            all_projects.append(df_feeder)
         if not df_dist.empty:
-            if search_query:
-                mask = df_dist.astype(str).apply(
-                    lambda x: x.str.contains(
-                        search_query, case=False, na=False
-                    )
-                ).any(axis=1)
-                filtered_dist = df_dist[mask]
-            else:
-                filtered_dist = df_dist
+            all_projects.append(df_dist)
 
-            if st.session_state.role == "admin":
-                edited_dist = st.data_editor(
-                    filtered_dist,
-                    num_rows="dynamic",
-                    use_container_width=True,
-                    hide_index=True,
-                    key="edit_dist",
-                )
-                if st.button("Save Distribution Changes"):
-                    save_sheet_data(edited_dist, "distribution")
-                    st.success("Distribution sheet updated successfully!")
-                    st.cache_data.clear()
-                    st.rerun()
-            else:
-                st.dataframe(
-                    filtered_dist,
-                    use_container_width=True,
-                    hide_index=True,
-                )
-        else:
-            st.info(
-                "No data found matching the 'distribution' sheet name inside"
-                " North As-Built Tracker.xlsx."
+        combined_df = (
+            pd.concat(all_projects, ignore_index=True)
+            if all_projects
+            else pd.DataFrame()
+        )
+
+        total_projects = len(combined_df)
+        completed_projects = 0
+        pending_projects = 0
+
+        percentage_column = None
+        if not combined_df.empty:
+            for column in combined_df.columns:
+                col_lower = str(column).strip().lower()
+                if any(
+                    term in col_lower
+                    for term in ["progress", "completion", "%", "percent"]
+                ):
+                    percentage_column = column
+                    break
+
+        if percentage_column is not None:
+            progress_values = (
+                combined_df[percentage_column]
+                .astype(str)
+                .str.strip()
+                .str.replace("%", "", regex=False)
             )
+            progress_values = pd.to_numeric(progress_values, errors="coerce")
+            completed_projects = int((progress_values >= 100).sum())
+            pending_projects = int((progress_values < 100).sum())
+
+        st.markdown(
+            """
+            <h3 style="color: #234263; margin-top: 10px; margin-bottom: 15px;">
+                North Region Summary
+            </h3>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        card1, card2, card3 = st.columns(3)
+        with card1:
+            st.metric("Total Projects", total_projects)
+        with card2:
+            st.metric("Completed Projects", completed_projects)
+        with card3:
+            st.metric("Pending Projects", pending_projects)
+
+        if os.path.exists(north_excel_path):
+            last_updated = datetime.fromtimestamp(
+                os.path.getmtime(north_excel_path)
+            ).strftime("%d %B %Y")
+        else:
+            last_updated = "N/A"
+
+        st.markdown(
+            f"""
+            <div style="text-align: center; font-size: 14px; color: #666666; margin-top: 5px; margin-bottom: 15px;">
+                🕒 Last Updated (North): <b>{last_updated}</b>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        st.markdown(
+            "<hr style='margin-top: 5px; margin-bottom: 15px;'>",
+            unsafe_allow_html=True,
+        )
+
+        # North Data Sub-Tabs
+        sub_tab_feeder, sub_tab_dist = st.tabs(
+            ["📋 Feeder Data", "📋 Distribution Data"]
+        )
+
+        with sub_tab_feeder:
+            if not df_feeder.empty:
+                filtered = (
+                    df_feeder[
+                        df_feeder.astype(str)
+                        .apply(
+                            lambda x: x.str.contains(
+                                search_query, case=False, na=False
+                            )
+                        )
+                        .any(axis=1)
+                    ]
+                    if search_query
+                    else df_feeder
+                )
+
+                if st.session_state.role == "admin":
+                    edited = st.data_editor(
+                        filtered,
+                        num_rows="dynamic",
+                        use_container_width=True,
+                        hide_index=True,
+                        key="edit_feeder_north",
+                    )
+                    if st.button(
+                        "Save North Feeder Changes", key="btn_f_north"
+                    ):
+                        save_sheet_data(
+                            north_excel_path, edited, "feeder"
+                        )
+                        st.success("North Feeder updated successfully!")
+                        st.cache_data.clear()
+                        st.rerun()
+                else:
+                    st.dataframe(
+                        filtered, use_container_width=True, hide_index=True
+                    )
+            else:
+                st.info("No Feeder data found in North Tracker excel file.")
+
+        with sub_tab_dist:
+            if not df_dist.empty:
+                filtered = (
+                    df_dist[
+                        df_dist.astype(str)
+                        .apply(
+                            lambda x: x.str.contains(
+                                search_query, case=False, na=False
+                            )
+                        )
+                        .any(axis=1)
+                    ]
+                    if search_query
+                    else df_dist
+                )
+
+                if st.session_state.role == "admin":
+                    edited = st.data_editor(
+                        filtered,
+                        num_rows="dynamic",
+                        use_container_width=True,
+                        hide_index=True,
+                        key="edit_dist_north",
+                    )
+                    if st.button(
+                        "Save North Distribution Changes", key="btn_d_north"
+                    ):
+                        save_sheet_data(
+                            north_excel_path, edited, "distribution"
+                        )
+                        st.success(
+                            "North Distribution updated successfully!"
+                        )
+                        st.cache_data.clear()
+                        st.rerun()
+                else:
+                    st.dataframe(
+                        filtered, use_container_width=True, hide_index=True
+                    )
+            else:
+                st.info(
+                    "No Distribution data found in North Tracker excel file."
+                )
+
+    # -----------------------------------------------------
+    # 2. CENTRAL REGION TAB (TRANSWORLD SHADED PLACEHOLDER)
+    # -----------------------------------------------------
+    with tab_central:
+        st.markdown(
+            """
+            <h3 style="color: #234263; margin-top: 10px; margin-bottom: 15px;">
+                Central Region Summary
+            </h3>
+            <div class="tw-placeholder-card">
+                📌 <b>Central Region Data Coming Soon</b><br>
+                Central region dataset will be integrated upon management approval and file availability.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    # -----------------------------------------------------
+    # 3. SOUTH REGION TAB (TRANSWORLD SHADED PLACEHOLDER)
+    # -----------------------------------------------------
+    with tab_south:
+        st.markdown(
+            """
+            <h3 style="color: #234263; margin-top: 10px; margin-bottom: 15px;">
+                South Region Summary
+            </h3>
+            <div class="tw-placeholder-card">
+                📌 <b>South Region Data Coming Soon</b><br>
+                South region dataset will be integrated upon management approval and file availability.
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
