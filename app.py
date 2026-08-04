@@ -33,20 +33,7 @@ st.markdown("""
         justify-content: center;
         align-items: center;
     }
-    .login-title {
-        text-align: center;
-        margin: 5px 0 2px 0;
-        font-size: 26px;
-        font-weight: 700;
-        color: #1e293b;
-    }
-    .login-sub {
-        text-align: center;
-        margin: 0 0 15px 0;
-        font-size: 14px;
-        color: #64748b;
-    }
-
+    
     /* Company Header Card */
     .header-card {
         background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
@@ -58,17 +45,6 @@ st.markdown("""
         display: flex;
         align-items: center;
         gap: 20px;
-    }
-    .header-card h1 {
-        margin: 0;
-        font-size: 26px;
-        font-weight: 700;
-        color: #ffffff;
-    }
-    .header-card p {
-        margin: 4px 0 0 0;
-        color: #cbd5e1;
-        font-size: 14px;
     }
 
     /* Financial Alert Banners */
@@ -98,17 +74,6 @@ st.markdown("""
         font-size: 24px !important;
         font-weight: 700 !important;
     }
-    
-    /* Login Box */
-    .login-container {
-        max-width: 420px;
-        margin: 40px auto;
-        padding: 30px;
-        background-color: #ffffff;
-        border-radius: 12px;
-        box-shadow: 0 6px 20px rgba(0,0,0,0.08);
-        border: 1px solid #e2e8f0;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -131,6 +96,16 @@ def clean_numeric_val(val):
     except ValueError:
         return 0.0
 
+def find_col(df, keywords):
+    """Safely find a column in dataframe matching any given keyword list."""
+    if df.empty:
+        return None
+    for col in df.columns:
+        col_clean = str(col).strip().lower()
+        if any(kw.lower() in col_clean for kw in keywords):
+            return col
+    return None
+
 def init_excel():
     """Create default excel sheet if not already existing."""
     if not os.path.exists(EXCEL_FILE):
@@ -139,10 +114,10 @@ def init_excel():
             df_std = pd.DataFrame({
                 "S.No": [1, 2],
                 "Name": ["Sample Student 1", "Sample Student 2"],
-                "Total Fee (Pkr)": ["15K", "20K"],
+                "Total Fee": ["15K", "20K"],
                 "Country": ["Pakistan", "USA"],
-                "Fee Received (Pkr)": ["10K", "20K"],
-                "Fee Pending (Pkr)": ["5K", "0"],
+                "Fee Received": ["10K", "20K"],
+                "Fee Pending": ["5K", "0"],
                 "Comments": ["Paid Partial", "Full Paid"],
                 "Month": ["Aug-26", "Aug-26"]
             })
@@ -153,7 +128,7 @@ def init_excel():
                 "Date": [datetime.now().strftime("%Y-%m-%d"), datetime.now().strftime("%Y-%m-%d")],
                 "Type": ["Investment", "Expense"],
                 "Category / Description": ["Initial Capital", "Domain & Hosting"],
-                "Amount (Pkr)": ["50K", "10K"],
+                "Amount": ["50K", "10K"],
                 "Added By": ["admin1", "admin1"],
                 "Notes": ["Initial pool", "Annual domain bill"]
             })
@@ -164,9 +139,10 @@ def init_excel():
                 "Project ID": ["PRJ-001"],
                 "Project Name": ["GIS Mapping System"],
                 "Client": ["Geo Corp"],
-                "Budget (Pkr)": ["100K"],
+                "Total Budget": ["100K"],
                 "Status": ["In Progress"],
-                "Deadline": ["2026-09-30"]
+                "Deadline": ["2026-09-30"],
+                "Remarks": ["Payment pending"]
             })
             df_proj.to_excel(writer, sheet_name="Projects", index=False)
 
@@ -184,7 +160,7 @@ def init_excel():
             df_phy = pd.DataFrame({
                 "Module / Plan": ["Physical Classroom Setup", "Lab Computers"],
                 "Target Date": ["Coming Soon (Q4 2026)", "Coming Soon"],
-                "Estimated Cost (Pkr)": ["200K", "150K"],
+                "Estimated Cost": ["200K", "150K"],
                 "Status": ["Planned", "Planned"]
             })
             df_phy.to_excel(writer, sheet_name="Physical Academy", index=False)
@@ -192,9 +168,11 @@ def init_excel():
 init_excel()
 
 def read_sheet(sheet_name):
-    """Read a specific sheet from Excel safely."""
+    """Read a specific sheet from Excel safely and clean column names."""
     try:
-        return pd.read_excel(EXCEL_FILE, sheet_name=sheet_name)
+        df = pd.read_excel(EXCEL_FILE, sheet_name=sheet_name)
+        df.columns = [str(c).strip() for c in df.columns]
+        return df
     except Exception:
         return pd.DataFrame()
 
@@ -209,16 +187,20 @@ def get_all_sheet_names():
     return ["Students", "Expenses & Investment", "Projects", "Publications", "Physical Academy"]
 
 def write_sheet(df, sheet_name):
-    """Write DataFrame to a specific sheet without overwriting other sheets."""
+    """Write DataFrame to a specific sheet safely without data loss."""
     try:
+        # Fill missing values to avoid openpyxl NaN errors
+        df_clean = df.fillna("")
+        
         excel_dict = pd.read_excel(EXCEL_FILE, sheet_name=None)
-        excel_dict[sheet_name] = df
+        excel_dict[sheet_name] = df_clean
+        
         with pd.ExcelWriter(EXCEL_FILE, engine="openpyxl") as writer:
             for sname, sdata in excel_dict.items():
-                sdata.to_excel(writer, sheet_name=sname, index=False)
+                sdata.fillna("").to_excel(writer, sheet_name=sname, index=False)
         return True
     except PermissionError:
-        st.error("⚠️ **File Permission Error**: 'gis_academy_tracker.xlsx' is currently open in Microsoft Excel or another program. Please **close the Excel file** on your PC and try saving again!")
+        st.error("⚠️ **File Permission Error**: 'gis_academy_tracker.xlsx' is currently open in Excel or another program. Please **close the Excel file** on your PC and try saving again!")
         return False
     except Exception as e:
         st.error(f"Error saving to Excel: {e}")
@@ -234,17 +216,18 @@ if "logged_in" not in st.session_state:
 if "user" not in st.session_state:
     st.session_state["user"] = ""
 
+# =========================================================
+# LOGIN SCREEN (COMPACT & CENTERED CARD)
+# =========================================================
 if not st.session_state["logged_in"]:
-    # Custom CSS for GIS Satellite Glassmorphism Login Screen
     st.markdown("""
         <style>
             [data-testid="stSidebar"] { display: none; }
             header { display: none !important; }
             footer { display: none !important; }
 
-            /* Full screen background */
             .stApp {
-                background: linear-gradient(rgba(10, 15, 26, 0.70), rgba(10, 15, 26, 0.80)), 
+                background: linear-gradient(rgba(10, 15, 26, 0.75), rgba(10, 15, 26, 0.85)), 
                             url('https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=1920&auto=format&fit=crop') no-repeat center center fixed;
                 background-size: cover;
             }
@@ -255,31 +238,25 @@ if not st.session_state["logged_in"]:
                 padding-bottom: 0rem !important; 
                 margin: 0 auto !important;
             }
-            body { 
-                overflow: hidden !important; 
-            }
 
-            /* Single Centered Glassmorphism Card Container */
             div[data-testid="stForm"] {
                 max-width: 460px !important;
                 margin: 0 auto !important;
-                background: rgba(15, 23, 42, 0.88) !important;
+                background: rgba(15, 23, 42, 0.90) !important;
                 backdrop-filter: blur(16px) !important;
                 -webkit-backdrop-filter: blur(16px) !important;
                 border: 1px solid rgba(255, 255, 255, 0.18) !important;
                 border-radius: 16px !important;
                 padding: 24px 26px 20px 26px !important;
-                box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7), 0 0 20px rgba(0, 122, 255, 0.2) !important;
+                box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7) !important;
             }
 
-            /* Labels */
             .stTextInput label p {
                 color: #f8fafc !important;
                 font-weight: 600 !important;
                 font-size: 13px !important;
             }
 
-            /* Input Fields - Compact white rounded style */
             .stTextInput input {
                 background-color: #ffffff !important;
                 color: #0f172a !important;
@@ -289,12 +266,7 @@ if not st.session_state["logged_in"]:
                 font-weight: 500 !important;
                 font-size: 14px !important;
             }
-            .stTextInput input:focus {
-                border-color: #007bff !important;
-                box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.3) !important;
-            }
 
-            /* Action Button Styling */
             div[data-testid="stFormSubmitButton"] > button {
                 background: linear-gradient(135deg, #007bff, #0056b3) !important;
                 color: #ffffff !important;
@@ -305,18 +277,11 @@ if not st.session_state["logged_in"]:
                 padding: 8px 0 !important;
                 margin-top: 6px !important;
                 box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4) !important;
-                transition: all 0.3s ease !important;
-            }
-            div[data-testid="stFormSubmitButton"] > button:hover {
-                background: linear-gradient(135deg, #0056b3, #004085) !important;
-                box-shadow: 0 6px 18px rgba(0, 123, 255, 0.6) !important;
-                transform: translateY(-1px);
             }
         </style>
     """, unsafe_allow_html=True)
     
     with st.form("login_form"):
-        # Highlighted Company Header Inside Card
         st.markdown("""
             <div style='text-align: center; margin-bottom: 16px;'>
                 <div style='background: linear-gradient(135deg, #38bdf8, #60a5fa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 21px; font-weight: 800; letter-spacing: 0.5px;'>
@@ -338,7 +303,7 @@ if not st.session_state["logged_in"]:
             if user in ADMIN_CREDENTIALS and ADMIN_CREDENTIALS[user] == pwd:
                 st.session_state["logged_in"] = True
                 st.session_state["user"] = user
-                st.success("Login Successful! Redirecting...")
+                st.success("Login Successful!")
                 st.rerun()
             else:
                 st.error("❌ Invalid Username or Password")
@@ -351,6 +316,9 @@ if not st.session_state["logged_in"]:
     """, unsafe_allow_html=True)
     st.stop()
 
+# =========================================================
+# MAIN APP HEADER & SIDEBAR
+# =========================================================
 header_col1, header_col2 = st.columns([0.15, 0.85])
 
 with header_col1:
@@ -377,7 +345,6 @@ with st.sidebar:
 
     st.markdown("---")
     
-    # Upload Logo Option
     uploaded_logo = st.file_uploader("🖼️ Upload / Change Logo", type=["png", "jpg", "jpeg"])
     if uploaded_logo:
         with open("logo.png", "wb") as f:
@@ -387,7 +354,6 @@ with st.sidebar:
 
     st.markdown("---")
     
-    # Excel Download Button
     if os.path.exists(EXCEL_FILE):
         with open(EXCEL_FILE, "rb") as f:
             st.download_button(
@@ -398,7 +364,6 @@ with st.sidebar:
                 use_container_width=True
             )
 
-    # Replace Excel File
     uploaded_excel = st.file_uploader("📤 Replace Excel File", type=["xlsx"])
     if uploaded_excel:
         with open(EXCEL_FILE, "wb") as f:
@@ -413,46 +378,33 @@ with st.sidebar:
         st.rerun()
 
 # =========================================================
-# GLOBAL FINANCIAL CALCULATIONS & TOP MAIN DASHBOARD METRICS
+# GLOBAL FINANCIAL CALCULATIONS (TOP DASHBOARD SUMMARY)
 # =========================================================
 df_std_global = read_sheet("Students")
 df_exp_global = read_sheet("Expenses & Investment")
 df_proj_global = read_sheet("Projects")
 
-# 1. Student Revenue Calculation
-std_rec_col = None
-for c in df_std_global.columns:
-    if "received" in c.lower():
-        std_rec_col = c
-        break
-total_std_rev = df_std_global[std_rec_col].apply(clean_numeric_val).sum() if not df_std_global.empty and std_rec_col else 0.0
+# 1. Student Revenue
+std_rec_col = find_col(df_std_global, ["received", "recieved", "fee received"])
+total_std_rev = df_std_global[std_rec_col].apply(clean_numeric_val).sum() if std_rec_col else 0.0
 
-# 2. Project Revenue Calculation
-proj_budg_col = None
-for c in df_proj_global.columns:
-    if any(k in c.lower() for k in ["budget", "total budget", "amount", "price"]):
-        proj_budg_col = c
-        break
-total_proj_rev = df_proj_global[proj_budg_col].apply(clean_numeric_val).sum() if not df_proj_global.empty and proj_budg_col else 0.0
+# 2. Project Revenue
+proj_budg_col = find_col(df_proj_global, ["budget", "total budget", "amount", "price"])
+total_proj_rev = df_proj_global[proj_budg_col].apply(clean_numeric_val).sum() if proj_budg_col else 0.0
 
 total_gross_rev = total_std_rev + total_proj_rev
 
 # 3. Investments & Expenses Calculation
-amt_col = None
-for c in df_exp_global.columns:
-    if "amount" in c.lower():
-        amt_col = c
-        break
-
+exp_amt_col = find_col(df_exp_global, ["amount", "cost", "pkr"])
 total_investment = 0.0
 total_expenses = 0.0
 
-if not df_exp_global.empty and amt_col:
+if not df_exp_global.empty and exp_amt_col:
     df_exp_calc = df_exp_global.copy()
-    df_exp_calc["_numeric_amt"] = df_exp_calc[amt_col].apply(clean_numeric_val)
-    type_col = [c for c in df_exp_calc.columns if "type" in c.lower()]
+    df_exp_calc["_numeric_amt"] = df_exp_calc[exp_amt_col].apply(clean_numeric_val)
+    type_col = find_col(df_exp_calc, ["type", "category"])
     if type_col:
-        is_invest = df_exp_calc[type_col[0]].astype(str).str.lower().str.contains("invest")
+        is_invest = df_exp_calc[type_col].astype(str).str.lower().str.contains("invest")
         total_investment = df_exp_calc[is_invest]["_numeric_amt"].sum()
         total_expenses = df_exp_calc[~is_invest]["_numeric_amt"].sum()
     else:
@@ -460,9 +412,7 @@ if not df_exp_global.empty and amt_col:
 
 net_cash_balance = (total_gross_rev + total_investment) - total_expenses
 
-# ---------------------------------------------------------
-# MAIN OVERALL FINANCIAL BANNER & KPI METRICS (TOP DISPLAY)
-# ---------------------------------------------------------
+# Top Banner Notification
 if net_cash_balance < 0:
     st.markdown(f"""
         <div class='loss-banner'>
@@ -478,7 +428,7 @@ else:
         </div>
     """, unsafe_allow_html=True)
 
-# Display 5 Key Metrics at the top of the main page
+# 5 Top KPI Cards
 m1, m2, m3, m4, m5 = st.columns(5)
 m1.metric("🎓 Student Revenue", f"PKR {total_std_rev:,.0f}")
 m2.metric("📁 Project Earnings", f"PKR {total_proj_rev:,.0f}")
@@ -488,10 +438,10 @@ m5.metric("⚖️ Net Cash Balance", f"PKR {net_cash_balance:,.0f}")
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# Dynamically fetch all sheet names present in the Excel file
+# =========================================================
+# DYNAMIC TABS GENERATION
+# =========================================================
 all_sheet_names = get_all_sheet_names()
-
-# Dynamic Emoji mapping for tabs
 tab_icons = {
     "Students": "🎓 ",
     "Expenses & Investment": "💰 ",
@@ -507,7 +457,7 @@ for tab, sheet_name in zip(tabs, all_sheet_names):
     with tab:
         df_sheet = read_sheet(sheet_name)
         
-        # 1. Custom Specialized UI for "Students" Sheet
+        # 1. STUDENTS SHEET
         if sheet_name == "Students":
             st.subheader("🎓 Online Students Fee Tracker")
             with st.expander("➕ Add New Student Entry"):
@@ -528,15 +478,25 @@ for tab, sheet_name in zip(tabs, all_sheet_names):
                             rec_num = clean_numeric_val(s_received)
                             pending_num = max(0.0, tot_num - rec_num)
                             
+                            # Smart Column Mapper
+                            tot_col_key = find_col(df_sheet, ["total fee", "total"]) or "Total Fee"
+                            rec_col_key = find_col(df_sheet, ["fee received", "received"]) or "Fee Received"
+                            pend_col_key = find_col(df_sheet, ["fee pending", "pending"]) or "Fee Pending"
+                            name_col_key = find_col(df_sheet, ["name", "student name"]) or "Name"
+                            country_col_key = find_col(df_sheet, ["country"]) or "Country"
+                            month_col_key = find_col(df_sheet, ["month", "batch"]) or "Month"
+                            comm_col_key = find_col(df_sheet, ["comment", "remarks"]) or "Comments"
+                            sno_col_key = find_col(df_sheet, ["s.no", "sno", "id"]) or "S.No"
+
                             new_row = {
-                                "S.No": len(df_sheet) + 1,
-                                "Name": s_name,
-                                "Total Fee (Pkr)": s_total_fee,
-                                "Country": s_country,
-                                "Fee Received (Pkr)": s_received,
-                                "Fee Pending (Pkr)": f"{pending_num:,.0f}" if pending_num > 0 else "0",
-                                "Comments": s_comments,
-                                "Month": s_month
+                                sno_col_key: len(df_sheet) + 1,
+                                name_col_key: s_name,
+                                tot_col_key: s_total_fee,
+                                country_col_key: s_country,
+                                rec_col_key: s_received,
+                                pend_col_key: f"{pending_num:,.0f}" if pending_num > 0 else "0",
+                                comm_col_key: s_comments,
+                                month_col_key: s_month
                             }
                             df_sheet = pd.concat([df_sheet, pd.DataFrame([new_row])], ignore_index=True)
                             if write_sheet(df_sheet, "Students"):
@@ -547,21 +507,25 @@ for tab, sheet_name in zip(tabs, all_sheet_names):
             edited_df = st.data_editor(df_sheet, num_rows="dynamic", use_container_width=True, key=f"editor_{sheet_name}")
 
             if st.button("💾 Save All Student Changes to Excel", type="primary", key=f"btn_save_{sheet_name}"):
+                tot_col = find_col(edited_df, ["total fee", "total"])
+                rec_col = find_col(edited_df, ["fee received", "received"])
+                pend_col = find_col(edited_df, ["fee pending", "pending"])
+                
+                # Convert pending column to object type to avoid dtype collision
+                if pend_col and pend_col in edited_df.columns:
+                    edited_df[pend_col] = edited_df[pend_col].astype(str)
+
                 for idx, row in edited_df.iterrows():
-                    tot_col = [c for c in edited_df.columns if "total" in c.lower()]
-                    rec_col = [c for c in edited_df.columns if "received" in c.lower()]
-                    pend_col = [c for c in edited_df.columns if "pending" in c.lower()]
-                    
                     if tot_col and rec_col and pend_col:
-                        tot_v = clean_numeric_val(row[tot_col[0]])
-                        rec_v = clean_numeric_val(row[rec_col[0]])
-                        edited_df.at[idx, pend_col[0]] = f"{max(0.0, tot_v - rec_v):,.0f}"
+                        tot_v = clean_numeric_val(row[tot_col])
+                        rec_v = clean_numeric_val(row[rec_col])
+                        edited_df.at[idx, pend_col] = f"{max(0.0, tot_v - rec_v):,.0f}"
 
                 if write_sheet(edited_df, "Students"):
-                    st.success("Student records updated successfully in Excel!")
+                    st.success("Student records updated successfully!")
                     st.rerun()
 
-        # 2. Custom Specialized UI for "Expenses & Investment" Sheet
+        # 2. EXPENSES & INVESTMENT SHEET
         elif sheet_name == "Expenses & Investment":
             st.subheader("💰 Expenses & Investment Tracker")
             with st.expander("➕ Add New Expense or Investment"):
@@ -576,30 +540,35 @@ for tab, sheet_name in zip(tabs, all_sheet_names):
                     e_notes = e5.text_input("Notes", value="Spent for campaign")
 
                     if st.form_submit_button("Record Financial Entry"):
+                        type_col_k = find_col(df_sheet, ["type"]) or "Type"
+                        desc_col_k = find_col(df_sheet, ["category", "description"]) or "Category / Description"
+                        amt_col_k = find_col(df_sheet, ["amount", "cost"]) or "Amount"
+                        date_col_k = find_col(df_sheet, ["date"]) or "Date"
+                        by_col_k = find_col(df_sheet, ["added by", "user"]) or "Added By"
+                        notes_col_k = find_col(df_sheet, ["notes", "remarks"]) or "Notes"
+
                         new_exp = {
-                            "Date": e_date.strftime("%Y-%m-%d"),
-                            "Type": e_type,
-                            "Category / Description": e_desc,
-                            "Amount (Pkr)": e_amt,
-                            "Added By": st.session_state["user"],
-                            "Notes": e_notes
+                            date_col_k: e_date.strftime("%Y-%m-%d"),
+                            type_col_k: e_type,
+                            desc_col_k: e_desc,
+                            amt_col_k: e_amt,
+                            by_col_k: st.session_state["user"],
+                            notes_col_k: e_notes
                         }
-                        df_exp_save = df_sheet.drop(columns=["_numeric_amt"], errors="ignore")
-                        df_exp_save = pd.concat([df_exp_save, pd.DataFrame([new_exp])], ignore_index=True)
-                        if write_sheet(df_exp_save, "Expenses & Investment"):
+                        df_sheet = pd.concat([df_sheet, pd.DataFrame([new_exp])], ignore_index=True)
+                        if write_sheet(df_sheet, "Expenses & Investment"):
                             st.success("Financial entry saved successfully!")
                             st.rerun()
 
             st.markdown("### 📋 Expenses & Investment Grid Editor")
-            df_exp_clean = df_sheet.drop(columns=["_numeric_amt"], errors="ignore")
-            edited_df = st.data_editor(df_exp_clean, num_rows="dynamic", use_container_width=True, key=f"editor_{sheet_name}")
+            edited_df = st.data_editor(df_sheet, num_rows="dynamic", use_container_width=True, key=f"editor_{sheet_name}")
 
             if st.button("💾 Save All Financial Changes to Excel", type="primary", key=f"btn_save_{sheet_name}"):
                 if write_sheet(edited_df, "Expenses & Investment"):
                     st.success("Expenses and Investment records updated successfully!")
                     st.rerun()
 
-        # 3. Custom Specialized UI for "Projects" Sheet
+        # 3. PROJECTS SHEET
         elif sheet_name == "Projects":
             st.subheader("📁 GIS Projects Tracker")
             with st.expander("➕ Add New Project"):
@@ -616,13 +585,20 @@ for tab, sheet_name in zip(tabs, all_sheet_names):
 
                     if st.form_submit_button("Save Project"):
                         if p_name:
+                            pid_k = find_col(df_sheet, ["project id", "id"]) or "Project ID"
+                            pname_k = find_col(df_sheet, ["project name", "name", "title"]) or "Project Name"
+                            client_k = find_col(df_sheet, ["client"]) or "Client"
+                            budg_k = find_col(df_sheet, ["budget", "total budget", "amount"]) or "Total Budget"
+                            status_k = find_col(df_sheet, ["status"]) or "Status"
+                            dead_k = find_col(df_sheet, ["deadline", "date"]) or "Deadline"
+
                             new_p = {
-                                "Project ID": p_id,
-                                "Project Name": p_name,
-                                "Client": p_client,
-                                "Budget (Pkr)": p_budget,
-                                "Status": p_status,
-                                "Deadline": p_deadline.strftime("%Y-%m-%d")
+                                pid_k: p_id,
+                                pname_k: p_name,
+                                client_k: p_client,
+                                budg_k: p_budget,
+                                status_k: p_status,
+                                dead_k: p_deadline.strftime("%Y-%m-%d")
                             }
                             df_sheet = pd.concat([df_sheet, pd.DataFrame([new_p])], ignore_index=True)
                             if write_sheet(df_sheet, "Projects"):
@@ -636,7 +612,7 @@ for tab, sheet_name in zip(tabs, all_sheet_names):
                     st.success("Projects sheet updated!")
                     st.rerun()
 
-        # 4. Custom Specialized UI for "Publications" Sheet
+        # 4. PUBLICATIONS SHEET
         elif sheet_name == "Publications":
             st.subheader("📚 Research & Publications Tracker")
             with st.expander("➕ Add Publication"):
@@ -669,10 +645,10 @@ for tab, sheet_name in zip(tabs, all_sheet_names):
                     st.success("Publications sheet updated!")
                     st.rerun()
 
-        # 5. Dynamic UI for ANY New / Custom Sheet added in Excel
+        # 5. DYNAMIC CUSTOM SHEETS HANDLER
         else:
             st.subheader(f"📄 Sheet: {sheet_name}")
-            st.info(f"📌 Custom Excel Sheet detected. You can edit, add rows, or delete entries directly below.")
+            st.info(f"📌 Custom Excel Sheet detected. Edit or add entries directly below.")
             
             edited_df = st.data_editor(
                 df_sheet,
