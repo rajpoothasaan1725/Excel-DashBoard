@@ -84,7 +84,7 @@ st.markdown("""
 # EMAIL NOTIFICATION CONFIGURATION
 # =========================================================
 SENDER_EMAIL = "geoinnovativesolutions9@gmail.com"
-SENDER_PASSWORD = "ihxx mhry upnz yqqp"  # Generated App Password
+SENDER_PASSWORD = "ihxxmhryupnzyqqp"  # Removed spaces for error-free SMTP connection
 
 def send_email_alert(subject, body, receiver_emails):
     """Utility function to send email notification to multiple recipients."""
@@ -102,14 +102,14 @@ def send_email_alert(subject, body, receiver_emails):
         msg['Subject'] = subject
         msg.attach(MIMEText(body, 'plain'))
 
-        server = smtplib.SMTP('smtp.gmail.com', 587)
+        server = smtplib.SMTP('smtp.gmail.com', 587, timeout=15)
         server.starttls()
         server.login(SENDER_EMAIL, SENDER_PASSWORD)
         server.send_message(msg)
         server.quit()
         return True
     except Exception as e:
-        st.warning(f"⚠️ Entry saved, but Email Alert failed: {e}")
+        st.error(f"⚠️ Email Sending Failed: {e}")
         return False
 
 EXCEL_FILE = "gis_academy_tracker.xlsx"
@@ -187,7 +187,10 @@ def init_excel():
                 "Authors": ["Geo Research Team"],
                 "Journal/Conference": ["International GIS Journal"],
                 "Status": ["Published"],
-                "Year": [2026]
+                "Year": [2026],
+                "Total Amount": ["30000"],
+                "Amount Received": ["30000"],
+                "Amount Pending": ["0"]
             })
             df_pub.to_excel(writer, sheet_name="Publications", index=False)
 
@@ -373,7 +376,6 @@ st.markdown("<hr style='margin: 15px 0 25px 0;'>", unsafe_allow_html=True)
 with st.sidebar:
     st.subheader("⚙️ Settings & Email Alerts")
     
-    # Defaults set to both Zahid Ali and Rana Hasaan
     notify_email = st.text_input(
         "📧 Alert Recipient Emails", 
         value="azahidlec@gmail.com, ranahasaan246@gmail.com", 
@@ -425,15 +427,24 @@ with st.sidebar:
 df_std_global = read_sheet("Students")
 df_exp_global = read_sheet("Expenses & Investment")
 df_proj_global = read_sheet("Projects")
+df_pub_global = read_sheet("Publications")
 
+# 1. Student Revenue
 std_rec_col = find_col(df_std_global, ["received", "recieved", "fee received"])
 total_std_rev = df_std_global[std_rec_col].apply(clean_numeric_val).sum() if std_rec_col else 0.0
 
+# 2. Project Revenue
 proj_budg_col = find_col(df_proj_global, ["budget", "total budget", "amount", "price"])
 total_proj_rev = df_proj_global[proj_budg_col].apply(clean_numeric_val).sum() if proj_budg_col else 0.0
 
-total_gross_rev = total_std_rev + total_proj_rev
+# 3. Publications Revenue
+pub_rec_col = find_col(df_pub_global, ["amount received", "received", "amount"])
+total_pub_rev = df_pub_global[pub_rec_col].apply(clean_numeric_val).sum() if pub_rec_col else 0.0
 
+# Total Gross Revenue (Students + Projects + Publications)
+total_gross_rev = total_std_rev + total_proj_rev + total_pub_rev
+
+# 4. Investments & Expenses Calculation
 exp_amt_col = find_col(df_exp_global, ["amount", "cost", "pkr"])
 total_investment = 0.0
 total_expenses = 0.0
@@ -538,7 +549,6 @@ for tab, sheet_name in zip(tabs, all_sheet_names):
                             if write_sheet(df_sheet, "Students"):
                                 st.success(f"Student '{s_name}' added successfully!")
                                 
-                                # Send Email Alert to recipients
                                 subject = f"🎓 New Student Entry: {s_name}"
                                 body = f"A new student entry was added by {st.session_state['user']}:\n\n- Name: {s_name}\n- Total Fee: {s_total_fee}\n- Fee Received: {s_received}\n- Country: {s_country}\n- Month/Batch: {s_month}\n- Comments: {s_comments}\n\nGIS Mapping Services Tracker"
                                 send_email_alert(subject, body, notify_email)
@@ -564,6 +574,9 @@ for tab, sheet_name in zip(tabs, all_sheet_names):
 
                 if write_sheet(edited_df, "Students"):
                     st.success("Student records updated successfully!")
+                    subject = f"🎓 Student Records Updated"
+                    body = f"Student records were updated in the grid editor by {st.session_state['user']}.\n\nGIS Mapping Services Tracker"
+                    send_email_alert(subject, body, notify_email)
                     st.rerun()
 
         # 2. EXPENSES & INVESTMENT SHEET
@@ -600,7 +613,6 @@ for tab, sheet_name in zip(tabs, all_sheet_names):
                         if write_sheet(df_sheet, "Expenses & Investment"):
                             st.success("Financial entry saved successfully!")
                             
-                            # Send Email Alert to recipients
                             subject = f"💰 New Financial Entry: {e_type} ({e_amt})"
                             body = f"A new financial record was added by {st.session_state['user']}:\n\n- Type: {e_type}\n- Description: {e_desc}\n- Amount: {e_amt}\n- Date: {e_date.strftime('%Y-%m-%d')}\n- Notes: {e_notes}\n\nGIS Mapping Services Tracker"
                             send_email_alert(subject, body, notify_email)
@@ -613,6 +625,9 @@ for tab, sheet_name in zip(tabs, all_sheet_names):
             if st.button("💾 Save All Financial Changes to Excel", type="primary", key=f"btn_save_{sheet_name}"):
                 if write_sheet(edited_df, "Expenses & Investment"):
                     st.success("Expenses and Investment records updated successfully!")
+                    subject = f"💰 Financial Grid Records Updated"
+                    body = f"Expenses/Investment records were updated in the grid editor by {st.session_state['user']}.\n\nGIS Mapping Services Tracker"
+                    send_email_alert(subject, body, notify_email)
                     st.rerun()
 
         # 3. PROJECTS SHEET
@@ -651,7 +666,6 @@ for tab, sheet_name in zip(tabs, all_sheet_names):
                             if write_sheet(df_sheet, "Projects"):
                                 st.success("Project added successfully!")
                                 
-                                # Send Email Alert to recipients
                                 subject = f"📁 New Project Added: {p_name}"
                                 body = f"A new project record was added by {st.session_state['user']}:\n\n- Project ID: {p_id}\n- Project Name: {p_name}\n- Client: {p_client}\n- Budget: {p_budget}\n- Status: {p_status}\n- Deadline: {p_deadline.strftime('%Y-%m-%d')}\n\nGIS Mapping Services Tracker"
                                 send_email_alert(subject, body, notify_email)
@@ -663,6 +677,9 @@ for tab, sheet_name in zip(tabs, all_sheet_names):
             if st.button("💾 Save Projects Changes to Excel", type="primary", key=f"btn_save_{sheet_name}"):
                 if write_sheet(edited_df, "Projects"):
                     st.success("Projects sheet updated!")
+                    subject = f"📁 Projects Grid Records Updated"
+                    body = f"Project records were updated in the grid editor by {st.session_state['user']}.\n\nGIS Mapping Services Tracker"
+                    send_email_alert(subject, body, notify_email)
                     st.rerun()
 
         # 4. PUBLICATIONS SHEET
@@ -676,26 +693,61 @@ for tab, sheet_name in zip(tabs, all_sheet_names):
                     pu_journal = pu3.text_input("Journal / Conference")
                     pu_status = pu4.selectbox("Status", ["Draft", "Under Review", "Accepted", "Published"])
                     pu_year = pu5.number_input("Year", value=2026, step=1)
+                    
+                    pu6, pu7 = st.columns(2)
+                    pu_tot = pu6.text_input("Total Amount (PKR)", value="30K")
+                    pu_rec = pu7.text_input("Amount Received (PKR)", value="30K")
 
                     if st.form_submit_button("Save Publication"):
                         if pu1:
+                            tot_v = clean_numeric_val(pu_tot)
+                            rec_v = clean_numeric_val(pu_rec)
+                            pend_v = max(0.0, tot_v - rec_v)
+                            
                             new_pub = {
                                 "Title": pu1,
                                 "Authors": pu2,
                                 "Journal/Conference": pu_journal,
                                 "Status": pu_status,
-                                "Year": int(pu_year)
+                                "Year": int(pu_year),
+                                "Total Amount": pu_tot,
+                                "Amount Received": pu_rec,
+                                "Amount Pending": f"{pend_v:,.0f}" if pend_v > 0 else "0"
                             }
                             df_sheet = pd.concat([df_sheet, pd.DataFrame([new_pub])], ignore_index=True)
                             if write_sheet(df_sheet, "Publications"):
                                 st.success("Publication record added!")
+                                
+                                subject = f"📚 New Publication Entry: {pu1}"
+                                body = f"A new publication record was added by {st.session_state['user']}:\n\n- Title: {pu1}\n- Authors: {pu2}\n- Total Amount: {pu_tot}\n- Amount Received: {pu_rec}\n\nGIS Mapping Services Tracker"
+                                send_email_alert(subject, body, notify_email)
+                                
                                 st.rerun()
 
             st.markdown("### 📋 Publications Grid Editor")
             edited_df = st.data_editor(df_sheet, num_rows="dynamic", use_container_width=True, key=f"editor_{sheet_name}")
             if st.button("💾 Save Publications Changes to Excel", type="primary", key=f"btn_save_{sheet_name}"):
+                tot_col = find_col(edited_df, ["total amount", "total"])
+                rec_col = find_col(edited_df, ["amount received", "received"])
+                pend_col = find_col(edited_df, ["amount pending", "pending"])
+                
+                if pend_col and pend_col in edited_df.columns:
+                    edited_df[pend_col] = edited_df[pend_col].astype(str)
+
+                for idx, row in edited_df.iterrows():
+                    if tot_col and rec_col and pend_col:
+                        tot_v = clean_numeric_val(row[tot_col])
+                        rec_v = clean_numeric_val(row[rec_col])
+                        edited_df.at[idx, pend_col] = f"{max(0.0, tot_v - rec_v):,.0f}"
+
                 if write_sheet(edited_df, "Publications"):
                     st.success("Publications sheet updated!")
+                    
+                    # GRID EDITOR SAVE PAR BHI EMAIL ALERT TRIGGER
+                    subject = f"📚 Publications Records Updated"
+                    body = f"Publication records were updated in the grid editor by {st.session_state['user']}.\n\nGIS Mapping Services Tracker"
+                    send_email_alert(subject, body, notify_email)
+                    
                     st.rerun()
 
         # 5. DYNAMIC CUSTOM SHEETS HANDLER
@@ -713,4 +765,9 @@ for tab, sheet_name in zip(tabs, all_sheet_names):
             if st.button(f"💾 Save '{sheet_name}' Changes to Excel", type="primary", key=f"btn_save_{sheet_name}"):
                 if write_sheet(edited_df, sheet_name):
                     st.success(f"Changes saved to sheet '{sheet_name}' successfully!")
+                    
+                    subject = f"📄 Custom Sheet Updated: {sheet_name}"
+                    body = f"Sheet '{sheet_name}' was updated by {st.session_state['user']}.\n\nGIS Mapping Services Tracker"
+                    send_email_alert(subject, body, notify_email)
+                    
                     st.rerun()
