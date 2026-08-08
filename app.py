@@ -74,7 +74,7 @@ st.markdown("""
 
     /* Metric Card Styling */
     div[data-testid="stMetricValue"] {
-        font-size: 24px !important;
+        font-size: 22px !important;
         font-weight: 700 !important;
     }
 </style>
@@ -84,7 +84,7 @@ st.markdown("""
 # EMAIL NOTIFICATION CONFIGURATION
 # =========================================================
 SENDER_EMAIL = "geoinnovativesolutions9@gmail.com"
-SENDER_PASSWORD = "ihxxmhryupnzyqqp"  # Removed spaces for error-free SMTP connection
+SENDER_PASSWORD = "ihxxmhryupnzyqqp"
 
 def send_email_alert(subject, body, receiver_emails):
     """Utility function to send email notification to multiple recipients."""
@@ -477,12 +477,14 @@ else:
         </div>
     """, unsafe_allow_html=True)
 
-m1, m2, m3, m4, m5 = st.columns(5)
+# 6 TOP SUMMARY KPI CARDS (PUBLICATIONS ON 3RD CARD)
+m1, m2, m3, m4, m5, m6 = st.columns(6)
 m1.metric("🎓 Student Revenue", f"PKR {total_std_rev:,.0f}")
 m2.metric("📁 Project Earnings", f"PKR {total_proj_rev:,.0f}")
-m3.metric("💵 Total Investment", f"PKR {total_investment:,.0f}")
-m4.metric("💸 Total Expenses", f"PKR {total_expenses:,.0f}")
-m5.metric("⚖️ Net Cash Balance", f"PKR {net_cash_balance:,.0f}")
+m3.metric("📚 Publications Revenue", f"PKR {total_pub_rev:,.0f}")
+m4.metric("💵 Total Investment", f"PKR {total_investment:,.0f}")
+m5.metric("💸 Total Expenses", f"PKR {total_expenses:,.0f}")
+m6.metric("⚖️ Net Cash Balance", f"PKR {net_cash_balance:,.0f}")
 
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -743,7 +745,6 @@ for tab, sheet_name in zip(tabs, all_sheet_names):
                 if write_sheet(edited_df, "Publications"):
                     st.success("Publications sheet updated!")
                     
-                    # GRID EDITOR SAVE PAR BHI EMAIL ALERT TRIGGER
                     subject = f"📚 Publications Records Updated"
                     body = f"Publication records were updated in the grid editor by {st.session_state['user']}.\n\nGIS Mapping Services Tracker"
                     send_email_alert(subject, body, notify_email)
