@@ -1,22 +1,38 @@
-
-from pathlib import Path
-import io
-import re
-from datetime import datetime
-
-import pandas as pd
 import streamlit as st
+import pandas as pd
+import re
+import io
+from pathlib import Path
+from datetime import datetime
 from PIL import Image
 import plotly.express as px
 import plotly.graph_objects as go
 
 
-# ============================================================
-# VMD THESIS GIS DASHBOARD — PROFESSIONAL EDITION
-# Vietnamese Mekong Delta Agricultural Vulnerability Assessment
-# ============================================================
+# -----------------------------------------------------------------------------
+# SELF-CONTAINED DATA PATHS
+# -----------------------------------------------------------------------------
+# The dashboard is designed to run from GitHub/Streamlit Cloud as well as
+# locally. It never depends on the user's Windows E:\ or C:\ paths.
+#
+# Supported repository layouts:
+#   1) Excel-DashBoard/Output/app.py + Output/maps + Output/data
+#   2) Excel-DashBoard/app.py + Output/maps + Output/data
+#
+# In both cases the dashboard automatically resolves the correct Output folder.
+BASE_DIR = Path(__file__).resolve().parent
 
-OUTPUT_FOLDER = Path(r"E:\Personal Work\Vitenaam\Out put")
+if BASE_DIR.name.lower() == "output":
+    OUTPUT_FOLDER = BASE_DIR
+elif (BASE_DIR / "Output").exists():
+    OUTPUT_FOLDER = BASE_DIR / "Output"
+elif (BASE_DIR / "output").exists():
+    OUTPUT_FOLDER = BASE_DIR / "output"
+else:
+    # Fallback: keep the app self-contained if Output is not present.
+    OUTPUT_FOLDER = BASE_DIR
+
+OUTPUT_DIR = OUTPUT_FOLDER
 MAPS_FOLDER = OUTPUT_FOLDER
 DATA_FOLDER = OUTPUT_FOLDER
 
@@ -27,9 +43,6 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# ============================================================
-# THEME / CSS
-# ============================================================
 
 st.markdown("""
 <style>
@@ -209,10 +222,6 @@ button[kind="secondary"] {
 """, unsafe_allow_html=True)
 
 
-# ============================================================
-# HELPERS
-# ============================================================
-
 def norm(value):
     return re.sub(r"[^a-z0-9]+", "_", str(value).lower()).strip("_")
 
@@ -317,12 +326,27 @@ def find_csv(csvs, wanted):
 
 
 def find_map(images, keywords):
-    for key in keywords:
-        k = norm(key)
-        for f in images:
-            stem = norm(f.stem)
-            if k == stem or k in stem:
-                return f
+    """Find a map using normalized filename aliases.
+
+    Exact/strong matches are preferred so that similarly named thesis figures
+    do not accidentally replace the intended map.
+    """
+    ranked = []
+    for f in images:
+        stem = norm(f.stem)
+        for idx, key in enumerate(keywords):
+            k = norm(key)
+            if not k:
+                continue
+            if stem == k:
+                ranked.append((0, idx, len(stem), f))
+            elif stem.startswith(k):
+                ranked.append((1, idx, len(stem), f))
+            elif k in stem:
+                ranked.append((2, idx, len(stem), f))
+    if ranked:
+        ranked.sort(key=lambda x: (x[0], x[1], x[2]))
+        return ranked[0][3]
     return None
 
 
@@ -386,7 +410,7 @@ def map_bytes(path):
 
 def show_map(path, caption, height_hint=None):
     if not path:
-        st.warning("Map file not found in the configured Output folder.")
+        st.warning("Map file was not found in the bundled Output folder.")
         return
     try:
         img = Image.open(path)
@@ -433,11 +457,6 @@ def metric_card(label, value, detail=""):
         """,
         unsafe_allow_html=True,
     )
-
-
-# ============================================================
-# MAP DEFINITIONS
-# ============================================================
 
 MAPS = {
     "Combined Agricultural Vulnerability": [
@@ -490,6 +509,24 @@ MAPS = {
     ],
 }
 
+# Additional aliases for the actual thesis figure filenames.
+# These allow the dashboard to work even when exported PNGs have descriptive
+# generated names rather than the canonical VMD names above.
+MAPS["Combined Agricultural Vulnerability"] += ["wide_clean_cartographic_infographic_map_a_detail"]
+MAPS["Salinity Hotspots"] += ["a_detailed_cartographic_map_image_a_clean_public", "map_sal_hotspots"]
+MAPS["Salinity–Drought Overlap"] += ["a_detailed_thematic_map_infographic_a_clean_carto", "map_sal_drought"]
+MAPS["SPI-3 Drought 2023–2024"] += ["a_clean_detailed_infographic_style_map_figure_in", "map_spi"]
+MAPS["NDVI 2023–2024"] += ["map_ndvi_current"]
+MAPS["NDVI Change 2000–2023"] += ["map_ndvi_change"]
+MAPS["Mann–Kendall S: NDVI & Rainfall"] += ["a_wide_infographic_style_scientific_map_figure_cl", "map_mk"]
+MAPS["Sen's Slope"] += ["a_detailed_map_infographic_a_landscape_oriented_s", "map_sen"]
+MAPS["VSSI 2000"] += ["VMD_VSSI_2000_panel"]
+MAPS["VSSI 2010–2011"] += ["VMD_VSSI_2010_2011_panel"]
+MAPS["VSSI 2015–2016"] += ["VMD_VSSI_2015_2016_panel"]
+MAPS["VSSI 2019–2020"] += ["VMD_VSSI_2019_2020_panel"]
+MAPS["VSSI 2023–2024"] += ["VMD_VSSI_2023_2024_panel"]
+MAPS["VSSI Change 2000–2023"] += ["a_detailed_infographic_map_figure_a_high_resoluti", "map_vssi_change"]
+
 CSV_NAMES = {
     "NDVI": "VMD_Province_NDVI_Statistics.csv",
     "SPI3": "VMD_Province_SPI3_Statistics.csv",
@@ -500,10 +537,6 @@ CSV_NAMES = {
 
 images, csvs = discover_files(MAPS_FOLDER)
 data = {k: read_csv_file(find_csv(csvs, v)) for k, v in CSV_NAMES.items()}
-
-# ============================================================
-# SIDEBAR
-# ============================================================
 
 st.sidebar.markdown("## 🌾 VMD Thesis Dashboard")
 st.sidebar.caption("Professional GIS Research Interface")
@@ -525,7 +558,7 @@ st.sidebar.markdown("---")
 st.sidebar.markdown("### Data Connection")
 
 if OUTPUT_FOLDER.exists():
-    st.sidebar.success("Output folder connected")
+    st.sidebar.success("Bundled Output connected")
 else:
     st.sidebar.error("Output folder not found")
 
@@ -542,12 +575,9 @@ for item in ["NDVI", "SPI-3", "Salinity", "Agricultural Vulnerability", "VSSI"]:
     st.sidebar.markdown(f"• {item}")
 
 st.sidebar.markdown("---")
-st.sidebar.caption("Data are read directly from the configured local Output folder.")
+st.sidebar.caption("Data and figures are bundled with the dashboard deployment.")
 st.sidebar.caption(f"Dashboard refreshed: {datetime.now().strftime('%d %b %Y, %H:%M')}")
 
-# ============================================================
-# HEADER
-# ============================================================
 
 st.markdown(
     """
@@ -563,11 +593,6 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-
-
-# ============================================================
-# EXECUTIVE DASHBOARD
-# ============================================================
 
 if page == "Executive Dashboard":
 
@@ -713,15 +738,11 @@ if page == "Executive Dashboard":
             st.plotly_chart(fig, use_container_width=True)
 
 
-# ============================================================
-# MAP GALLERY
-# ============================================================
-
 elif page == "Thematic Map Gallery":
 
     st.markdown('<div class="section-title">Thematic Map Gallery</div>', unsafe_allow_html=True)
     st.markdown(
-        '<div class="note">All figures are discovered automatically from the configured Output folder. '
+        '<div class="note">All figures are discovered automatically from the bundled Output folder. '
         'This gallery preserves the supplied cartographic outputs and provides thesis-ready viewing and download.</div>',
         unsafe_allow_html=True,
     )
@@ -753,10 +774,6 @@ elif page == "Thematic Map Gallery":
     st.dataframe(inv_df, use_container_width=True, hide_index=True)
     dataframe_download(inv_df, "VMD_Map_Inventory.csv")
 
-
-# ============================================================
-# NDVI
-# ============================================================
 
 elif page == "NDVI | Vegetation":
 
@@ -827,10 +844,6 @@ elif page == "NDVI | Vegetation":
                  "Figure: Sen's slope analysis")
 
 
-# ============================================================
-# SPI-3
-# ============================================================
-
 elif page == "SPI-3 | Drought":
 
     st.markdown('<div class="section-title">SPI-3 | Drought Assessment</div>', unsafe_allow_html=True)
@@ -891,11 +904,6 @@ elif page == "SPI-3 | Drought":
             'The dashboard does not invent class thresholds.</div>',
             unsafe_allow_html=True,
         )
-
-
-# ============================================================
-# SALINITY & VULNERABILITY
-# ============================================================
 
 elif page == "Salinity & Vulnerability":
 
@@ -980,10 +988,6 @@ elif page == "Salinity & Vulnerability":
     )
 
 
-# ============================================================
-# VSSI
-# ============================================================
-
 elif page == "VSSI | Salinity Stress":
 
     st.markdown('<div class="section-title">VSSI | Vietnamese Salinity Stress Index</div>', unsafe_allow_html=True)
@@ -1052,11 +1056,6 @@ elif page == "VSSI | Salinity Stress":
     show_map(find_map(images, MAPS["VSSI Change 2000–2023"]),
              "Figure: VMD VSSI Change 2000–2023")
 
-
-# ============================================================
-# PROVINCE EXPLORER
-# ============================================================
-
 elif page == "Province Explorer":
 
     st.markdown('<div class="section-title">Province-Level Statistical Explorer</div>', unsafe_allow_html=True)
@@ -1068,7 +1067,7 @@ elif page == "Province Explorer":
     df = data[indicator]
 
     if df is None:
-        st.error(f"{indicator} CSV was not detected in the Output folder.")
+        st.error(f"{indicator} CSV was not detected in the bundled Output folder.")
     else:
         pc = province_col(df)
         if pc is None:
@@ -1116,10 +1115,6 @@ elif page == "Province Explorer":
                     st.dataframe(sub[display_cols], use_container_width=True, hide_index=True)
                     dataframe_download(sub[display_cols], f"VMD_{indicator}_{norm(province)}.csv")
 
-
-# ============================================================
-# RESEARCH FINDINGS
-# ============================================================
 
 elif page == "Research Findings":
 
@@ -1245,9 +1240,6 @@ elif page == "Research Findings":
         st.markdown(f"• {s}")
 
 
-# ============================================================
-# DATA & REPRODUCIBILITY
-# ============================================================
 
 elif page == "Data & Reproducibility":
 
@@ -1259,6 +1251,31 @@ elif page == "Data & Reproducibility":
         f'No data are uploaded to a remote service by this dashboard.</div>',
         unsafe_allow_html=True,
     )
+
+    st.markdown('<div class="section-subtitle">Deployment Diagnostics</div>', unsafe_allow_html=True)
+    diag = pd.DataFrame([
+        {
+            "Component": "Dashboard file",
+            "Status": "Available",
+            "Location": str(Path(__file__).resolve()),
+        },
+        {
+            "Component": "Bundled Output folder",
+            "Status": "Available" if OUTPUT_FOLDER.exists() else "Missing",
+            "Location": str(OUTPUT_FOLDER),
+        },
+        {
+            "Component": "Map files",
+            "Status": f"{len(images)} detected",
+            "Location": str(MAPS_FOLDER),
+        },
+        {
+            "Component": "CSV files",
+            "Status": f"{len(csvs)} detected",
+            "Location": str(DATA_FOLDER),
+        },
+    ])
+    st.dataframe(diag, use_container_width=True, hide_index=True)
 
     st.markdown('<div class="section-subtitle">Core Dataset Status</div>', unsafe_allow_html=True)
     status_rows = []
@@ -1310,10 +1327,6 @@ elif page == "Data & Reproducibility":
         unsafe_allow_html=True,
     )
 
-
-# ============================================================
-# FOOTER
-# ============================================================
 
 st.markdown("---")
 st.markdown(
