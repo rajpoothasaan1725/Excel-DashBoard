@@ -5,6 +5,12 @@ import io
 from pathlib import Path
 from datetime import datetime
 from PIL import Image
+from docx import Document
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.enums import TA_CENTER
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -458,6 +464,172 @@ def metric_card(label, value, detail=""):
         unsafe_allow_html=True,
     )
 
+
+# -----------------------------------------------------------------------------
+# THESIS WRITE-UP & REPORT SUPPORT
+# -----------------------------------------------------------------------------
+def find_writeup():
+    """Locate the original thesis write-up inside the bundled Output folder."""
+    candidates = [
+        OUTPUT_FOLDER / "Final saltwater agriculture.docx",
+        BASE_DIR / "Final saltwater agriculture.docx",
+    ]
+    for p in candidates:
+        if p.exists():
+            return p
+
+    roots = [OUTPUT_FOLDER, BASE_DIR]
+    for root in roots:
+        if not root.exists():
+            continue
+        for p in root.rglob("*.docx"):
+            if "final saltwater agriculture" in norm(p.stem):
+                return p
+    return None
+
+
+@st.cache_data(show_spinner=False)
+def read_writeup(path_str):
+    """Read the supplied thesis write-up without changing its wording."""
+    if not path_str:
+        return [], []
+    try:
+        doc = Document(path_str)
+        paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
+        tables = []
+        for table in doc.tables:
+            rows = []
+            for row in table.rows:
+                rows.append([cell.text.strip() for cell in row.cells])
+            if rows:
+                tables.append(rows)
+        return paragraphs, tables
+    except Exception:
+        return [], []
+
+
+def build_research_report_pdf():
+    """Generate a concise research report from the dashboard's supplied datasets."""
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, pagesize=A4,
+        rightMargin=42, leftMargin=42, topMargin=42, bottomMargin=42
+    )
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        "ReportTitle", parent=styles["Title"], alignment=TA_CENTER,
+        fontSize=18, leading=22, spaceAfter=12
+    )
+    h_style = ParagraphStyle(
+        "ReportHeading", parent=styles["Heading2"], fontSize=12,
+        leading=15, spaceBefore=10, spaceAfter=6
+    )
+    body_style = ParagraphStyle(
+        "ReportBody", parent=styles["BodyText"], fontSize=9.5,
+        leading=14, spaceAfter=6
+    )
+    small_style = ParagraphStyle(
+        "ReportSmall", parent=styles["BodyText"], fontSize=8,
+        leading=11
+    )
+
+    story = [
+        Paragraph("Vietnamese Mekong Delta Agricultural Vulnerability Assessment", title_style),
+        Paragraph("Research Report generated from the dashboard's supplied datasets and figures", body_style),
+        Paragraph("Study focus", h_style),
+        Paragraph(
+            "Assessing Spatial and Temporal Changes in Saltwater Intrusion and Its Impact on "
+            "Agricultural Zones in the Mekong Delta (2000–2024).", body_style
+        ),
+    ]
+
+    # Core indicators
+    ndvi = data.get("NDVI")
+    spi = data.get("SPI3")
+    vssi = data.get("VSSI")
+    sal = data.get("Salinity")
+    vul = data.get("Vulnerability")
+
+    story.append(Paragraph("Key indicators", h_style))
+    indicators = [["Indicator", "First supplied value", "Latest supplied value", "Change"]]
+
+    for label, df in [("NDVI", ndvi), ("SPI-3", spi), ("VSSI", vssi)]:
+        s = period_summary(df)
+        if s is not None and len(s) >= 2:
+            first = float(s.iloc[0]["Regional Mean"])
+            latest = float(s.iloc[-1]["Regional Mean"])
+            indicators.append([label, f"{first:.3f}", f"{latest:.3f}", f"{latest-first:+.3f}"])
+
+    if len(indicators) > 1:
+        t = Table(indicators, colWidths=[90, 115, 115, 80], repeatRows=1)
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0,0), (-1,0), colors.HexColor("#dfe7ed")),
+            ("GRID", (0,0), (-1,-1), 0.4, colors.grey),
+            ("FONTNAME", (0,0), (-1,0), "Helvetica-Bold"),
+            ("FONTSIZE", (0,0), (-1,-1), 8),
+            ("VALIGN", (0,0), (-1,-1), "MIDDLE"),
+            ("BOTTOMPADDING", (0,0), (-1,0), 6),
+        ]))
+        story += [t, Spacer(1, 10)]
+
+    if sal is not None and area_col(sal):
+        s = sal.copy()
+        pc, ac = province_col(sal), area_col(sal)
+        s["_area"] = safe_numeric(s, ac)
+        if pc and not s.empty:
+            s = s.sort_values("_area", ascending=False)
+            total = s["_area"].sum()
+            top3 = (s.head(3)["_area"].sum()/total*100) if total else 0
+            story.append(Paragraph("Salinity hotspot evidence", h_style))
+            story.append(Paragraph(
+                f"The largest reported salinity hotspot area is associated with {s.iloc[0][pc]} "
+                f"({fmt(s.iloc[0]['_area'], 0)}). The three largest provincial reported areas "
+                f"represent approximately {top3:.1f}% of the supplied total.", body_style
+            ))
+
+    if vul is not None and area_col(vul):
+        v = vul.copy()
+        pc, ac = province_col(vul), area_col(vul)
+        v["_area"] = safe_numeric(v, ac)
+        if pc and not v.empty:
+            v = v.sort_values("_area", ascending=False)
+            total = v["_area"].sum()
+            top2 = (v.head(2)["_area"].sum()/total*100) if total else 0
+            story.append(Paragraph("Agricultural vulnerability evidence", h_style))
+            story.append(Paragraph(
+                f"The largest reported agricultural vulnerability area is associated with "
+                f"{v.iloc[0][pc]} ({fmt(v.iloc[0]['_area'], 0)}). The two leading provinces "
+                f"represent approximately {top2:.1f}% of the supplied total.", body_style
+            ))
+
+    story.append(Paragraph("Research components represented in the dashboard", h_style))
+    for item in [
+        "NDVI vegetation-condition assessment across the supplied study periods.",
+        "SPI-3 drought/moisture-stress assessment.",
+        "Salinity hotspot mapping and salinity–drought overlap.",
+        "Combined agricultural vulnerability mapping.",
+        "VSSI salinity-stress assessment and temporal comparison.",
+        "Province-level statistics and thesis-oriented evidence review.",
+        "Mann–Kendall and Sen's slope figures displayed as supplied."
+    ]:
+        story.append(Paragraph("• " + item, body_style))
+
+    story.append(Paragraph("Data note", h_style))
+    story.append(Paragraph(
+        "This report is generated from the data and figures bundled with the dashboard. "
+        "Reported area fields retain the source dataset's scale; no unsupported area unit is assigned. "
+        "The report does not infer numerical trend statistics from map colours.", small_style
+    ))
+    story.append(Spacer(1, 8))
+    story.append(Paragraph(
+        f"Generated: {datetime.now().strftime('%d %b %Y, %H:%M')}", small_style
+    ))
+
+    doc.build(story)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
 MAPS = {
     "Combined Agricultural Vulnerability": [
         "VMD_Combined_Agricultural_Vulnerability_250m",
@@ -550,6 +722,8 @@ pages = [
     "VSSI | Salinity Stress",
     "Province Explorer",
     "Research Findings",
+    "Thesis Write Up",
+    "Research Report",
     "Data & Reproducibility",
 ]
 page = st.sidebar.radio("Navigation", pages)
@@ -1239,6 +1413,109 @@ elif page == "Research Findings":
     for s in thesis_sections:
         st.markdown(f"• {s}")
 
+
+
+
+elif page == "Thesis Write Up":
+
+    st.markdown('<div class="section-title">Thesis Write Up</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="note">The original thesis write-up is displayed here as supplied. '
+        'The dashboard does not rewrite, paraphrase or alter the thesis content.</div>',
+        unsafe_allow_html=True,
+    )
+
+    writeup_path = find_writeup()
+
+    if writeup_path:
+        st.success(f"Thesis write-up found: {writeup_path.name}")
+
+        with open(writeup_path, "rb") as f:
+            writeup_bytes = f.read()
+
+        st.download_button(
+            "⬇️ Download Thesis Write Up (Original Word File)",
+            data=writeup_bytes,
+            file_name=writeup_path.name,
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            key="download_original_thesis_writeup",
+        )
+
+        paragraphs, tables = read_writeup(str(writeup_path))
+
+        st.markdown('<div class="section-subtitle">Document Content</div>', unsafe_allow_html=True)
+
+        for para in paragraphs:
+            clean = para.strip()
+            if not clean:
+                continue
+            # Preserve common Word heading styles based on numbering/title patterns.
+            if re.match(r"^(Chapter\s+\d+|[1-9]\d*(?:\.\d+)*\s+)", clean, flags=re.I):
+                st.markdown(f"### {clean}")
+            elif len(clean) < 130 and clean.upper() == clean and any(c.isalpha() for c in clean):
+                st.markdown(f"### {clean}")
+            else:
+                st.markdown(clean)
+
+        if tables:
+            st.markdown('<div class="section-subtitle">Tables from the Thesis</div>', unsafe_allow_html=True)
+            for i, rows in enumerate(tables, start=1):
+                st.markdown(f"**Table {i}**")
+                try:
+                    max_cols = max(len(r) for r in rows)
+                    normalized = [r + [""] * (max_cols - len(r)) for r in rows]
+                    if len(normalized) > 1:
+                        st.dataframe(
+                            pd.DataFrame(normalized[1:], columns=normalized[0]),
+                            use_container_width=True,
+                            hide_index=True,
+                        )
+                    else:
+                        st.dataframe(pd.DataFrame(normalized), use_container_width=True, hide_index=True)
+                except Exception:
+                    st.write(rows)
+    else:
+        st.warning(
+            "Final saltwater agriculture.docx was not found. "
+            "Place the original Word file inside the same Output folder as the dashboard."
+        )
+
+
+elif page == "Research Report":
+
+    st.markdown('<div class="section-title">Research Report</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="note">A concise PDF research report is generated directly from the '
+        'dashboard datasets. It uses the supplied values and does not invent unsupported results.</div>',
+        unsafe_allow_html=True,
+    )
+
+    pdf_bytes = build_research_report_pdf()
+    st.download_button(
+        "⬇️ Download Research Report (PDF)",
+        data=pdf_bytes,
+        file_name="VMD_Agricultural_Vulnerability_Research_Report.pdf",
+        mime="application/pdf",
+        key="download_research_report_pdf",
+    )
+
+    st.markdown('<div class="section-subtitle">Report Contents</div>', unsafe_allow_html=True)
+    report_contents = [
+        "Study focus and research scope",
+        "NDVI regional temporal evidence",
+        "SPI-3 drought/moisture-stress evidence",
+        "VSSI temporal evidence",
+        "Salinity hotspot evidence",
+        "Agricultural vulnerability evidence",
+        "Integrated dashboard research components",
+        "Data and interpretation notes",
+    ]
+    for item in report_contents:
+        st.markdown(f"• {item}")
+
+    st.markdown('<div class="section-subtitle">Report Status</div>', unsafe_allow_html=True)
+    st.success("Research report is ready for download.")
+    st.caption("The PDF is generated when this tab is opened and reflects the currently detected Output datasets.")
 
 
 elif page == "Data & Reproducibility":
